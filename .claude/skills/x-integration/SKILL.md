@@ -1,6 +1,6 @@
 ---
 name: x-integration
-description: X (Twitter) integration for NanoClaw. Post tweets, like, reply, retweet, and quote. Use for setup, testing, or troubleshooting X functionality. Triggers on "setup x", "x integration", "twitter", "post tweet", "tweet".
+description: X (Twitter) integration for NanoClaw. Search posts, post tweets, like, reply, retweet, and quote. Use for setup, testing, or troubleshooting X functionality. Triggers on "setup x", "x integration", "twitter", "post tweet", "tweet", "search x".
 ---
 
 # X (Twitter) Integration
@@ -13,6 +13,7 @@ Browser automation for X interactions via WhatsApp.
 
 | Action | Tool | Description |
 |--------|------|-------------|
+| Search | `x_search` | Search posts by query, hashtag, or user |
 | Post | `x_post` | Publish new tweets |
 | Like | `x_like` | Like any tweet |
 | Reply | `x_reply` | Reply to tweets |
@@ -145,11 +146,13 @@ Paths relative to project root:
 │   └── browser.ts    # Playwright utilities
 └── scripts/
     ├── setup.ts      # Interactive login
+    ├── search.ts     # Search posts
     ├── post.ts       # Post tweet
     ├── like.ts       # Like tweet
     ├── reply.ts      # Reply to tweet
     ├── retweet.ts    # Retweet
-    └── quote.ts      # Quote tweet
+    ├── quote.ts      # Quote tweet
+    └── read-home.ts  # Read home feed
 ```
 
 ### Integration Points
@@ -289,6 +292,8 @@ Replace `@Assistant` with your configured trigger name (`ASSISTANT_NAME` in `.en
 ```
 @Assistant post a tweet: Hello world!
 
+@Assistant search X for AI agents
+
 @Assistant like this tweet https://x.com/user/status/123
 
 @Assistant reply to https://x.com/user/status/123 with: Great post!
@@ -318,6 +323,12 @@ ls -la data/x-browser-profile/ 2>/dev/null | head -5
 
 ```bash
 npx dotenv -e .env -- npx tsx .claude/skills/x-integration/scripts/setup.ts
+```
+
+### Test Search
+
+```bash
+echo '{"query":"AI agents","limit":5}' | npx dotenv -e .env -- npx tsx .claude/skills/x-integration/scripts/search.ts
 ```
 
 ### Test Post (will actually post)
@@ -363,7 +374,7 @@ rm -f data/x-browser-profile/SingletonCookie
 
 ```bash
 # Host logs (relative to project root)
-grep -i "x_post\|x_like\|x_reply\|handleXIpc" logs/nanoclaw.log | tail -20
+grep -i "x_post\|x_like\|x_reply\|x_search\|handleXIpc" logs/nanoclaw.log | tail -20
 
 # Script errors
 grep -i "error\|failed" logs/nanoclaw.log | tail -20
@@ -396,6 +407,8 @@ If X updates their UI, selectors in scripts may break. Current selectors:
 | Confirm retweet | `[data-testid="retweetConfirm"]` |
 | Modal dialog | `[role="dialog"][aria-modal="true"]` |
 | Modal submit | `[data-testid="tweetButton"]` |
+| Tweet card | `article[data-testid="tweet"]` |
+| Tweet text | `[data-testid="tweetText"]` |
 
 ### Container Build Issues
 

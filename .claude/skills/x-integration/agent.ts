@@ -64,6 +64,41 @@ export function createXTools(ctx: SkillToolsContext) {
 
   return [
     tool(
+      'x_search',
+      `Search X (Twitter) for posts matching a query. Main group only.
+
+Use for research, trend discovery, or finding posts on a topic.`,
+      {
+        query: z.string().describe('Search query (e.g. "AI agents", "#buildinpublic", "from:sama")'),
+        limit: z.number().int().min(5).max(60).default(20).describe('Number of posts to fetch (5-60)')
+      },
+      async (args: { query: string; limit: number }) => {
+        if (!isMain) {
+          return {
+            content: [{ type: 'text', text: 'Only the main group can use X integration tools.' }],
+            isError: true
+          };
+        }
+
+        const requestId = `xsearch-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        writeIpcFile(TASKS_DIR, {
+          type: 'x_search',
+          requestId,
+          query: args.query,
+          limit: args.limit,
+          groupFolder,
+          timestamp: new Date().toISOString()
+        });
+
+        const result = await waitForResult(requestId);
+        return {
+          content: [{ type: 'text', text: result.message }],
+          isError: !result.success
+        };
+      }
+    ),
+
+    tool(
       'x_post',
       `Post a tweet to X (Twitter). Main group only.
 

@@ -145,6 +145,17 @@ export async function handleXIpc(
       result = await runScript('quote', { tweetUrl: data.tweetUrl, comment: data.comment });
       break;
 
+    case 'x_search':
+      if (!data.query) {
+        result = { success: false, message: 'Missing query' };
+        break;
+      }
+      result = await runScript('search', {
+        query: data.query,
+        limit: Number.isFinite(data.limit) ? data.limit : 20,
+      });
+      break;
+
     default:
       return false;
   }
