@@ -14,6 +14,9 @@ import { CronExpressionParser } from 'cron-parser';
 const IPC_DIR = '/workspace/ipc';
 const MESSAGES_DIR = path.join(IPC_DIR, 'messages');
 const TASKS_DIR = path.join(IPC_DIR, 'tasks');
+const X_RESULTS_DIR = path.join(IPC_DIR, 'x_results');
+const X_RESULT_POLL_MS = 1000;
+const X_RESULT_TIMEOUT_MS = 130000;
 
 // Context from environment variables (set by the agent runner)
 const chatJid = process.env.NANOCLAW_CHAT_JID!;
@@ -32,6 +35,40 @@ function writeIpcFile(dir: string, data: object): string {
   fs.renameSync(tempPath, filepath);
 
   return filename;
+}
+
+async function waitForXResult(
+  requestId: string,
+  timeoutMs = X_RESULT_TIMEOUT_MS,
+): Promise<{ success: boolean; message: string }> {
+  const resultFile = path.join(X_RESULTS_DIR, `${requestId}.json`);
+  let elapsed = 0;
+
+  while (elapsed < timeoutMs) {
+    if (fs.existsSync(resultFile)) {
+      try {
+        const parsed = JSON.parse(fs.readFileSync(resultFile, 'utf-8')) as {
+          success?: boolean;
+          message?: string;
+        };
+        fs.unlinkSync(resultFile);
+        return {
+          success: parsed.success === true,
+          message: parsed.message || 'No message returned from X handler',
+        };
+      } catch (err) {
+        return {
+          success: false,
+          message: `Failed to parse X result: ${err instanceof Error ? err.message : String(err)}`,
+        };
+      }
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, X_RESULT_POLL_MS));
+    elapsed += X_RESULT_POLL_MS;
+  }
+
+  return { success: false, message: 'X request timed out' };
 }
 
 const server = new McpServer({
@@ -329,6 +366,249 @@ Use available_groups.json to find the JID for a group. The folder name must be c
 
     return {
       content: [{ type: 'text' as const, text: `Group "${args.name}" registered. It will start receiving messages immediately.` }],
+    };
+  },
+);
+
+server.tool(
+  'x_read_home_feed',
+  'Read posts from X home feed for research/summarization. Main group only.',
+  {
+    limit: z
+      .number()
+      .int()
+      .min(5)
+      .max(60)
+      .default(25)
+      .describe('Number of posts to fetch (5-60)'),
+  },
+  async (args) => {
+    if (!isMain) {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: 'Only the main group can use X integration tools.',
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    const requestId = `xread-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    writeIpcFile(TASKS_DIR, {
+      type: 'x_read_home_feed',
+      requestId,
+      limit: args.limit,
+      groupFolder,
+      timestamp: new Date().toISOString(),
+    });
+
+    const result = await waitForXResult(requestId);
+    return {
+      content: [{ type: 'text' as const, text: result.message }],
+      isError: !result.success,
+    };
+  },
+);
+
+server.tool(
+  'x_post',
+  'Post a tweet on X (Twitter). Main group only.',
+  {
+    content: z
+      .string()
+      .max(280)
+      .describe('Tweet content (max 280 characters)'),
+  },
+  async (args) => {
+    if (!isMain) {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: 'Only the main group can use X integration tools.',
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    const requestId = `xpost-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    writeIpcFile(TASKS_DIR, {
+      type: 'x_post',
+      requestId,
+      content: args.content,
+      groupFolder,
+      timestamp: new Date().toISOString(),
+    });
+
+    const result = await waitForXResult(requestId);
+    return {
+      content: [{ type: 'text' as const, text: result.message }],
+      isError: !result.success,
+    };
+  },
+);
+
+server.tool(
+  'x_like',
+  'Like a tweet on X (Twitter). Main group only.',
+  {
+    tweet_url: z
+      .string()
+      .describe('Tweet URL (e.g., https://x.com/user/status/123) or tweet ID'),
+  },
+  async (args) => {
+    if (!isMain) {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: 'Only the main group can use X integration tools.',
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    const requestId = `xlike-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    writeIpcFile(TASKS_DIR, {
+      type: 'x_like',
+      requestId,
+      tweetUrl: args.tweet_url,
+      groupFolder,
+      timestamp: new Date().toISOString(),
+    });
+
+    const result = await waitForXResult(requestId);
+    return {
+      content: [{ type: 'text' as const, text: result.message }],
+      isError: !result.success,
+    };
+  },
+);
+
+server.tool(
+  'x_reply',
+  'Reply to a tweet on X (Twitter). Main group only.',
+  {
+    tweet_url: z
+      .string()
+      .describe('Tweet URL (e.g., https://x.com/user/status/123) or tweet ID'),
+    content: z
+      .string()
+      .max(280)
+      .describe('Reply content (max 280 characters)'),
+  },
+  async (args) => {
+    if (!isMain) {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: 'Only the main group can use X integration tools.',
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    const requestId = `xreply-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    writeIpcFile(TASKS_DIR, {
+      type: 'x_reply',
+      requestId,
+      tweetUrl: args.tweet_url,
+      content: args.content,
+      groupFolder,
+      timestamp: new Date().toISOString(),
+    });
+
+    const result = await waitForXResult(requestId);
+    return {
+      content: [{ type: 'text' as const, text: result.message }],
+      isError: !result.success,
+    };
+  },
+);
+
+server.tool(
+  'x_retweet',
+  'Retweet a tweet on X (Twitter). Main group only.',
+  {
+    tweet_url: z
+      .string()
+      .describe('Tweet URL (e.g., https://x.com/user/status/123) or tweet ID'),
+  },
+  async (args) => {
+    if (!isMain) {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: 'Only the main group can use X integration tools.',
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    const requestId = `xretweet-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    writeIpcFile(TASKS_DIR, {
+      type: 'x_retweet',
+      requestId,
+      tweetUrl: args.tweet_url,
+      groupFolder,
+      timestamp: new Date().toISOString(),
+    });
+
+    const result = await waitForXResult(requestId);
+    return {
+      content: [{ type: 'text' as const, text: result.message }],
+      isError: !result.success,
+    };
+  },
+);
+
+server.tool(
+  'x_quote',
+  'Quote-tweet on X (Twitter). Main group only.',
+  {
+    tweet_url: z
+      .string()
+      .describe('Tweet URL (e.g., https://x.com/user/status/123) or tweet ID'),
+    comment: z
+      .string()
+      .max(280)
+      .describe('Quote tweet comment (max 280 characters)'),
+  },
+  async (args) => {
+    if (!isMain) {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: 'Only the main group can use X integration tools.',
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    const requestId = `xquote-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    writeIpcFile(TASKS_DIR, {
+      type: 'x_quote',
+      requestId,
+      tweetUrl: args.tweet_url,
+      comment: args.comment,
+      groupFolder,
+      timestamp: new Date().toISOString(),
+    });
+
+    const result = await waitForXResult(requestId);
+    return {
+      content: [{ type: 'text' as const, text: result.message }],
+      isError: !result.success,
     };
   },
 );
