@@ -37,7 +37,14 @@ function writeResult(
 }
 
 async function runScript(
-  scriptName: 'post' | 'like' | 'reply' | 'retweet' | 'quote' | 'read-home' | 'search',
+  scriptName:
+    | 'post'
+    | 'like'
+    | 'reply'
+    | 'retweet'
+    | 'quote'
+    | 'read-home'
+    | 'search',
   args: Record<string, unknown>,
 ): Promise<SkillResult> {
   const scriptPath = path.join(
