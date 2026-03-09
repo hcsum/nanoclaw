@@ -117,6 +117,31 @@ function log(message: string): void {
   console.error(`[agent-runner] ${message}`);
 }
 
+/**
+ * Packy and other Anthropic-compatible gateways commonly expect API-key auth.
+ * When a custom base URL is configured, force key mode and drop token auth vars.
+ */
+function forceApiKeyModeForCustomBaseUrl(
+  sdkEnv: Record<string, string | undefined>,
+): void {
+  if (!sdkEnv.ANTHROPIC_BASE_URL || !sdkEnv.ANTHROPIC_API_KEY) return;
+  if (sdkEnv.ANTHROPIC_AUTH_TOKEN || sdkEnv.CLAUDE_CODE_OAUTH_TOKEN) {
+    log(
+      'Custom ANTHROPIC_BASE_URL detected; forcing API-key auth (dropping token-based auth env vars)',
+    );
+  }
+  delete sdkEnv.ANTHROPIC_AUTH_TOKEN;
+  delete sdkEnv.CLAUDE_CODE_OAUTH_TOKEN;
+}
+
+function isRedactedThinkingResumeError(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  return (
+    message.includes('redacted_thinking') &&
+    message.includes('Invalid data')
+  );
+}
+
 function getSessionSummary(sessionId: string, transcriptPath: string): string | null {
   const projectDir = path.dirname(transcriptPath);
   const indexPath = path.join(projectDir, 'sessions-index.json');
@@ -484,6 +509,7 @@ async function main(): Promise<void> {
   // Credentials are injected by the host's credential proxy via ANTHROPIC_BASE_URL.
   // No real secrets exist in the container environment.
   const sdkEnv: Record<string, string | undefined> = { ...process.env };
+  forceApiKeyModeForCustomBaseUrl(sdkEnv);
 
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
   const mcpServerPath = path.join(__dirname, 'ipc-mcp-stdio.js');
@@ -509,9 +535,46 @@ async function main(): Promise<void> {
   let resumeAt: string | undefined;
   try {
     while (true) {
-      log(`Starting query (session: ${sessionId || 'new'}, resumeAt: ${resumeAt || 'latest'})...`);
+      log(`Starting query (session: ${sessionId || 'new'}, resumeAt: ${resumeAt || 'latest'}, resumeRequested: ${(sessionId || resumeAt) ? 'yes' : 'no'})...`);
 
-      const queryResult = await runQuery(prompt, sessionId, mcpServerPath, containerInput, sdkEnv, resumeAt);
+      let queryResult;
+      try {
+        queryResult = await runQuery(
+          prompt,
+          sessionId,
+          mcpServerPath,
+          containerInput,
+          sdkEnv,
+          resumeAt,
+        );
+      } catch (err) {
+        // Best-effort resume: if resume fails, retry once with a fresh session.
+        // This keeps the run alive even when a provider/gateway rejects resume payloads.
+        if (!sessionId && !resumeAt) {
+          throw err;
+        }
+        const reason = err instanceof Error ? err.message : String(err);
+        if (isRedactedThinkingResumeError(err)) {
+          log(
+            'Provider rejected redacted_thinking during resume. Retrying once without resume context.',
+          );
+        } else {
+          log(
+            `Resume attempt failed (${reason}). Retrying once without resume context.`,
+          );
+        }
+        sessionId = undefined;
+        resumeAt = undefined;
+        queryResult = await runQuery(
+          prompt,
+          undefined,
+          mcpServerPath,
+          containerInput,
+          sdkEnv,
+          undefined,
+        );
+      }
+
       if (queryResult.newSessionId) {
         sessionId = queryResult.newSessionId;
       }
