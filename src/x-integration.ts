@@ -17,6 +17,7 @@ interface XIpcData {
   tweetUrl?: string;
   comment?: string;
   limit?: number;
+  query?: string;
 }
 
 const SCRIPT_TIMEOUT_MS = 120_000;
@@ -36,7 +37,7 @@ function writeResult(
 }
 
 async function runScript(
-  scriptName: 'post' | 'like' | 'reply' | 'retweet' | 'quote' | 'read-home',
+  scriptName: 'post' | 'like' | 'reply' | 'retweet' | 'quote' | 'read-home' | 'search',
   args: Record<string, unknown>,
 ): Promise<SkillResult> {
   const scriptPath = path.join(
@@ -201,6 +202,16 @@ export async function handleXIpc(
     case 'x_read_home_feed':
       result = await runScript('read-home', {
         limit: Number.isFinite(data.limit) ? data.limit : 25,
+      });
+      break;
+    case 'x_search':
+      if (!data.query) {
+        result = { success: false, message: 'Missing query' };
+        break;
+      }
+      result = await runScript('search', {
+        query: data.query,
+        limit: Number.isFinite(data.limit) ? data.limit : 20,
       });
       break;
     default:

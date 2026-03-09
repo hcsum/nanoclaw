@@ -413,6 +413,45 @@ server.tool(
 );
 
 server.tool(
+  'x_search',
+  'Search X (Twitter) for posts matching a query. Main group only. Use for research, trend discovery, or finding posts on a topic.',
+  {
+    query: z.string().describe('Search query (e.g. "AI agents", "#buildinpublic", "from:sama")'),
+    limit: z
+      .number()
+      .int()
+      .min(5)
+      .max(60)
+      .default(20)
+      .describe('Number of posts to fetch (5-60)'),
+  },
+  async (args) => {
+    if (!isMain) {
+      return {
+        content: [{ type: 'text' as const, text: 'Only the main group can use X integration tools.' }],
+        isError: true,
+      };
+    }
+
+    const requestId = `xsearch-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    writeIpcFile(TASKS_DIR, {
+      type: 'x_search',
+      requestId,
+      query: args.query,
+      limit: args.limit,
+      groupFolder,
+      timestamp: new Date().toISOString(),
+    });
+
+    const result = await waitForXResult(requestId);
+    return {
+      content: [{ type: 'text' as const, text: result.message }],
+      isError: !result.success,
+    };
+  },
+);
+
+server.tool(
   'x_post',
   'Post a tweet on X (Twitter). Main group only.',
   {
