@@ -73,15 +73,16 @@ async function ensureContext(): Promise<BrowserContext> {
   fs.mkdirSync(PROFILE_DIR, { recursive: true });
   cleanupLockFiles();
 
-  const launchOptions: Parameters<typeof chromium.launchPersistentContext>[1] = {
-    headless: false,
-    viewport: { width: 1280, height: 720 },
-    args: [
-      '--disable-blink-features=AutomationControlled',
-      '--disable-dev-shm-usage',
-      '--no-sandbox',
-    ],
-  };
+  const launchOptions: Parameters<typeof chromium.launchPersistentContext>[1] =
+    {
+      headless: false,
+      viewport: { width: 1280, height: 720 },
+      args: [
+        '--disable-blink-features=AutomationControlled',
+        '--disable-dev-shm-usage',
+        '--no-sandbox',
+      ],
+    };
 
   if (fs.existsSync(CHROME_PATH)) {
     launchOptions.executablePath = CHROME_PATH;
@@ -169,13 +170,16 @@ async function snapshot(input: SnapshotInput): Promise<BrowserResult> {
         querySelectorAll: (selector: string) => unknown[];
       };
       const win = (globalThis as { window?: unknown }).window as {
-        getComputedStyle: (el: unknown) => { display?: string; visibility?: string };
+        getComputedStyle: (el: unknown) => {
+          display?: string;
+          visibility?: string;
+        };
       };
 
       for (const current of Array.from(doc.querySelectorAll('[data-nc-ref]'))) {
-        (current as { removeAttribute: (name: string) => void }).removeAttribute(
-          'data-nc-ref',
-        );
+        (
+          current as { removeAttribute: (name: string) => void }
+        ).removeAttribute('data-nc-ref');
       }
 
       const selectors = interactive
@@ -208,7 +212,10 @@ async function snapshot(input: SnapshotInput): Promise<BrowserResult> {
         const refValue = `e${refCounter++}`;
         el.setAttribute('data-nc-ref', refValue);
 
-        const item: Element = { ref: `@${refValue}`, tag: el.tagName.toLowerCase() };
+        const item: Element = {
+          ref: `@${refValue}`,
+          tag: el.tagName.toLowerCase(),
+        };
         if (el.tagName === 'INPUT') {
           item.type = el.type;
         }
@@ -266,7 +273,9 @@ async function performAction(input: ActionInput): Promise<BrowserResult> {
       if (!input.selector) {
         return { success: false, message: 'Selector is required for click' };
       }
-      await page.click(resolveSelector(input.selector), { timeout: TIMEOUTS.action });
+      await page.click(resolveSelector(input.selector), {
+        timeout: TIMEOUTS.action,
+      });
       await page.waitForTimeout(TIMEOUTS.pageLoad);
 
       const pages = ctx.pages().filter((p) => !p.isClosed());
@@ -326,7 +335,9 @@ async function readPage(input: ReadInput): Promise<BrowserResult> {
       querySelector: (selector: string) => unknown;
       body: unknown;
     };
-    const root = currentSelector ? doc.querySelector(currentSelector) : doc.body;
+    const root = currentSelector
+      ? doc.querySelector(currentSelector)
+      : doc.body;
     if (!root) return '';
 
     const clone = (root as { cloneNode: (deep: boolean) => unknown }).cloneNode(
@@ -372,7 +383,10 @@ export async function executeUiBrowserTask(
         case 'read':
           return await readPage((input || {}) as ReadInput);
         default:
-          return { success: false, message: `Unknown browser script: ${script}` };
+          return {
+            success: false,
+            message: `Unknown browser script: ${script}`,
+          };
       }
     } catch (err) {
       return {
