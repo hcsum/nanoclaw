@@ -22,10 +22,10 @@ interface SearchResult {
 }
 
 function clampLimit(input?: number): number {
-  if (!Number.isFinite(input)) return 10;
+  if (!Number.isFinite(input)) return 20;
   const n = Math.floor(Number(input));
   if (n < 1) return 1;
-  if (n > 50) return 50;
+  if (n > 100) return 100;
   return n;
 }
 
@@ -78,54 +78,75 @@ async function searchWebCafe(input: SearchInput): Promise<ScriptResult> {
     await searchInput.press('Enter');
     await page.waitForTimeout(config.timeouts.pageLoad);
 
-    // Extract search results
-    const results = await page.evaluate((maxResults) => {
-      const items: SearchResult[] = [];
+    // Extract search results with scrolling
+    const results: SearchResult[] = [];
+    const seenUrls = new Set<string>();
+    const maxScrollSteps = 10;
 
-      // Web.cafe uses links with specific classes for search results
-      const resultLinks = document.querySelectorAll('a[href*="/topic"], a[href*="/tutorial"], a[href*="/experience"]');
+    for (let step = 0; step < maxScrollSteps && results.length < limit; step++) {
+      // Extract currently visible results
+      const batch = await page.evaluate(() => {
+        const items: SearchResult[] = [];
 
-      for (const linkEl of Array.from(resultLinks)) {
-        if (items.length >= maxResults) break;
+        // Web.cafe uses links with specific classes for search results
+        const resultLinks = document.querySelectorAll('a[href*="/topic"], a[href*="/tutorial"], a[href*="/experience"]');
 
-        const link = linkEl as HTMLAnchorElement;
-        const url = link.href;
+        for (const linkEl of Array.from(resultLinks)) {
+          const link = linkEl as HTMLAnchorElement;
+          const url = link.href;
 
-        // Skip navigation links
-        if (!url.includes('/topic/') && !url.includes('/tutorial/') && !url.includes('/experience/')) {
-          continue;
+          // Skip navigation links
+          if (!url.includes('/topic/') && !url.includes('/tutorial/') && !url.includes('/experience/')) {
+            continue;
+          }
+
+          // Title is in h2 within the link
+          const titleEl = link.querySelector('h2, h3');
+          const title = titleEl?.textContent?.trim() || '';
+          if (!title) continue;
+
+          // Snippet is in p tag
+          const snippetEl = link.querySelector('p');
+          const snippet = snippetEl?.textContent?.trim().slice(0, 200) || '';
+
+          // Date/author info is in the metadata div
+          const metaEl = link.querySelector('.text-gray-500, .text-xs');
+          const metaText = metaEl?.textContent?.trim() || '';
+
+          // Extract date if present (format: YYYY-MM-DD HH:MM)
+          const dateMatch = metaText.match(/\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}/);
+          const date = dateMatch ? dateMatch[0] : '';
+
+          // Author is harder to extract, leave empty for now
+          const author = '';
+
+          let section = '';
+          if (url.includes('/topic/')) section = 'topic';
+          else if (url.includes('/tutorial/')) section = 'tutorial';
+          else if (url.includes('/experience/')) section = 'experience';
+
+          items.push({ title, snippet, url, author, date, section });
         }
 
-        // Title is in h2 within the link
-        const titleEl = link.querySelector('h2, h3');
-        const title = titleEl?.textContent?.trim() || '';
-        if (!title) continue;
+        return items;
+      });
 
-        // Snippet is in p tag
-        const snippetEl = link.querySelector('p');
-        const snippet = snippetEl?.textContent?.trim().slice(0, 200) || '';
-
-        // Date/author info is in the metadata div
-        const metaEl = link.querySelector('.text-gray-500, .text-xs');
-        const metaText = metaEl?.textContent?.trim() || '';
-
-        // Extract date if present (format: YYYY-MM-DD HH:MM)
-        const dateMatch = metaText.match(/\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}/);
-        const date = dateMatch ? dateMatch[0] : '';
-
-        // Author is harder to extract, leave empty for now
-        const author = '';
-
-        let section = '';
-        if (url.includes('/topic/')) section = 'topic';
-        else if (url.includes('/tutorial/')) section = 'tutorial';
-        else if (url.includes('/experience/')) section = 'experience';
-
-        items.push({ title, snippet, url, author, date, section });
+      // Deduplicate and add to results
+      for (const item of batch) {
+        if (!seenUrls.has(item.url)) {
+          seenUrls.add(item.url);
+          results.push(item);
+          if (results.length >= limit) break;
+        }
       }
 
-      return items;
-    }, limit);
+      // If we have enough results, stop scrolling
+      if (results.length >= limit) break;
+
+      // Scroll down to load more results
+      await page.mouse.wheel(0, 1800);
+      await page.waitForTimeout(1200);
+    }
 
     if (results.length === 0) {
       return {
