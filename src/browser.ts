@@ -37,7 +37,12 @@ export async function handleBrowserIpc(
 
   const PROJECT_ROOT = process.cwd();
   const SCRIPTS_DIR = path.join(PROJECT_ROOT, '.claude/skills/browser/scripts');
-  const resultPath = path.join(dataDir, 'ipc', sourceGroup, `browser_result_${taskId}.json`);
+  const resultPath = path.join(
+    dataDir,
+    'ipc',
+    sourceGroup,
+    `browser_result_${taskId}.json`,
+  );
 
   try {
     const result = await executeBrowserScript(SCRIPTS_DIR, script, input);
