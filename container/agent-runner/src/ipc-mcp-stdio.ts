@@ -657,7 +657,7 @@ async function waitForBrowserResult(
   requestId: string,
   timeoutMs = 30000,
 ): Promise<{ success: boolean; message: string }> {
-  const resultFile = path.join(IPC_DIR, groupFolder, `browser_result_${requestId}.json`);
+  const resultFile = path.join(IPC_DIR, `browser_result_${requestId}.json`);
   let elapsed = 0;
 
   while (elapsed < timeoutMs) {

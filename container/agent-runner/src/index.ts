@@ -117,6 +117,125 @@ function log(message: string): void {
   console.error(`[agent-runner] ${message}`);
 }
 
+interface ToolUseBlock {
+  id?: string;
+  type?: string;
+  name?: string;
+  input?: unknown;
+}
+
+interface SkillInvocationRecord {
+  timestamp: string;
+  sessionId: string | null;
+  assistantUuid: string | null;
+  parentToolUseId: string | null;
+  toolUseId: string | null;
+  skillName: string;
+  input: unknown;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function truncateForLog(value: string, max = 200): string {
+  return value.length > max ? `${value.slice(0, max)}...` : value;
+}
+
+function summarizeUnknown(value: unknown): string {
+  if (typeof value === 'string') return truncateForLog(value);
+  try {
+    return truncateForLog(JSON.stringify(value));
+  } catch {
+    return String(value);
+  }
+}
+
+function extractToolUseBlocks(message: unknown): ToolUseBlock[] {
+  if (!isRecord(message)) return [];
+  const assistantMessage = message.message;
+  if (!isRecord(assistantMessage)) return [];
+  const content = assistantMessage.content;
+  if (!Array.isArray(content)) return [];
+
+  return content.filter(
+    (block): block is ToolUseBlock =>
+      isRecord(block) && block.type === 'tool_use' && typeof block.name === 'string',
+  );
+}
+
+function extractSkillName(input: unknown): string | null {
+  if (typeof input === 'string' && input.trim().length > 0) {
+    return input.trim();
+  }
+
+  if (!isRecord(input)) return null;
+
+  const candidates = ['skill_name', 'skillName', 'name', 'skill', 'command'];
+  for (const key of candidates) {
+    const value = input[key];
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+
+  const firstStringEntry = Object.entries(input).find(
+    ([, value]) => typeof value === 'string' && value.trim().length > 0,
+  );
+  return firstStringEntry ? (firstStringEntry[1] as string).trim() : null;
+}
+
+function appendSkillInvocationRecord(record: SkillInvocationRecord): void {
+  const logsDir = '/workspace/group/logs';
+  const logFile = path.join(logsDir, 'skill-invocations.jsonl');
+  fs.mkdirSync(logsDir, { recursive: true });
+  fs.appendFileSync(logFile, `${JSON.stringify(record)}\n`);
+}
+
+function logSkillInvocation(
+  message: unknown,
+  sessionId: string | undefined,
+  seenToolUseIds: Set<string>,
+  usedSkills: Set<string>,
+): void {
+  for (const block of extractToolUseBlocks(message)) {
+    if (block.name !== 'Skill') continue;
+
+    const toolUseId =
+      typeof block.id === 'string' && block.id.trim().length > 0
+        ? block.id.trim()
+        : null;
+    if (toolUseId && seenToolUseIds.has(toolUseId)) continue;
+    if (toolUseId) seenToolUseIds.add(toolUseId);
+
+    const skillName = extractSkillName(block.input) || '<unknown>';
+    usedSkills.add(skillName);
+
+    const assistantUuid =
+      isRecord(message) && typeof message.uuid === 'string' ? message.uuid : null;
+    const parentToolUseId =
+      isRecord(message) && typeof message.parent_tool_use_id === 'string'
+        ? message.parent_tool_use_id
+        : null;
+
+    appendSkillInvocationRecord({
+      timestamp: new Date().toISOString(),
+      sessionId: sessionId || null,
+      assistantUuid,
+      parentToolUseId,
+      toolUseId,
+      skillName,
+      input: block.input ?? null,
+    });
+
+    log(
+      `Skill invoked: ${skillName}${
+        toolUseId ? ` toolUseId=${toolUseId}` : ''
+      } input=${summarizeUnknown(block.input ?? null)}`,
+    );
+  }
+}
+
 /**
  * Packy and other Anthropic-compatible gateways commonly expect API-key auth.
  * When a custom base URL is configured, force key mode and drop token auth vars.
@@ -390,6 +509,8 @@ async function runQuery(
   let lastAssistantUuid: string | undefined;
   let messageCount = 0;
   let resultCount = 0;
+  const seenSkillToolUseIds = new Set<string>();
+  const usedSkills = new Set<string>();
 
   // Load global CLAUDE.md as additional system context (shared across all groups)
   const globalClaudeMdPath = '/workspace/global/CLAUDE.md';
@@ -460,6 +581,7 @@ async function runQuery(
 
     if (message.type === 'assistant' && 'uuid' in message) {
       lastAssistantUuid = (message as { uuid: string }).uuid;
+      logSkillInvocation(message, newSessionId || sessionId, seenSkillToolUseIds, usedSkills);
     }
 
     if (message.type === 'system' && message.subtype === 'init') {
@@ -485,6 +607,11 @@ async function runQuery(
   }
 
   ipcPolling = false;
+  if (usedSkills.size > 0) {
+    log(`Skills used during query: ${Array.from(usedSkills).sort().join(', ')}`);
+  } else {
+    log('Skills used during query: none');
+  }
   log(`Query done. Messages: ${messageCount}, results: ${resultCount}, lastAssistantUuid: ${lastAssistantUuid || 'none'}, closedDuringQuery: ${closedDuringQuery}`);
   return { newSessionId, lastAssistantUuid, closedDuringQuery };
 }
