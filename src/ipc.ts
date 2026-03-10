@@ -11,6 +11,7 @@ import { logger } from './logger.js';
 import { RegisteredGroup } from './types.js';
 import { handleXIpc } from './x-integration.js';
 import { handleWebCafeIpc } from './web-cafe.js';
+import { handleBrowserIpc } from './browser.js';
 
 export interface IpcDeps {
   sendMessage: (jid: string, text: string) => Promise<void>;
@@ -456,7 +457,11 @@ export async function processTaskIpc(
       const handledByWebCafe =
         !handledByX &&
         (await handleWebCafeIpc(data, sourceGroup, isMain, DATA_DIR));
-      if (!handledByX && !handledByWebCafe) {
+      const handledByBrowser =
+        !handledByX &&
+        !handledByWebCafe &&
+        (await handleBrowserIpc(data, sourceGroup, isMain, DATA_DIR));
+      if (!handledByX && !handledByWebCafe && !handledByBrowser) {
         logger.warn({ type: data.type }, 'Unknown IPC task type');
       }
   }
