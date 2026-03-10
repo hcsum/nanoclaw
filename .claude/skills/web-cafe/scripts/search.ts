@@ -82,34 +82,44 @@ async function searchWebCafe(input: SearchInput): Promise<ScriptResult> {
     const results = await page.evaluate((maxResults) => {
       const items: SearchResult[] = [];
 
-      // Look for result items - adjust selectors based on actual page structure
-      const resultEls = document.querySelectorAll(
-        'article, [class*="post"], [class*="item"], [class*="result"]'
-      );
+      // Web.cafe uses links with specific classes for search results
+      const resultLinks = document.querySelectorAll('a[href*="/topic"], a[href*="/tutorial"], a[href*="/experience"]');
 
-      for (const el of Array.from(resultEls)) {
+      for (const linkEl of Array.from(resultLinks)) {
         if (items.length >= maxResults) break;
 
-        const titleEl = el.querySelector('h1, h2, h3, [class*="title"]');
+        const link = linkEl as HTMLAnchorElement;
+        const url = link.href;
+
+        // Skip navigation links
+        if (!url.includes('/topic/') && !url.includes('/tutorial/') && !url.includes('/experience/')) {
+          continue;
+        }
+
+        // Title is in h2 within the link
+        const titleEl = link.querySelector('h2, h3');
         const title = titleEl?.textContent?.trim() || '';
         if (!title) continue;
 
-        const linkEl = el.querySelector('a[href*="/topic"], a[href*="/tutorial"], a[href*="/experience"]') as HTMLAnchorElement;
-        const url = linkEl?.href || '';
-
-        const snippetEl = el.querySelector('p, [class*="content"], [class*="desc"]');
+        // Snippet is in p tag
+        const snippetEl = link.querySelector('p');
         const snippet = snippetEl?.textContent?.trim().slice(0, 200) || '';
 
-        const authorEl = el.querySelector('[class*="author"], [class*="user"]');
-        const author = authorEl?.textContent?.trim() || '';
+        // Date/author info is in the metadata div
+        const metaEl = link.querySelector('.text-gray-500, .text-xs');
+        const metaText = metaEl?.textContent?.trim() || '';
 
-        const dateEl = el.querySelector('time, [class*="date"]');
-        const date = dateEl?.getAttribute('datetime') || dateEl?.textContent?.trim() || '';
+        // Extract date if present (format: YYYY-MM-DD HH:MM)
+        const dateMatch = metaText.match(/\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}/);
+        const date = dateMatch ? dateMatch[0] : '';
+
+        // Author is harder to extract, leave empty for now
+        const author = '';
 
         let section = '';
-        if (url.includes('/topic')) section = 'topic';
-        else if (url.includes('/tutorial')) section = 'tutorial';
-        else if (url.includes('/experience')) section = 'experience';
+        if (url.includes('/topic/')) section = 'topic';
+        else if (url.includes('/tutorial/')) section = 'tutorial';
+        else if (url.includes('/experience/')) section = 'experience';
 
         items.push({ title, snippet, url, author, date, section });
       }

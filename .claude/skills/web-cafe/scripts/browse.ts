@@ -76,30 +76,33 @@ async function browseSection(input: BrowseInput): Promise<ScriptResult> {
     const posts = await page.evaluate((maxPosts) => {
       const items: PostItem[] = [];
 
-      // Look for post items
-      const postEls = document.querySelectorAll(
-        'article, [class*="post"], [class*="item"], [class*="card"]'
-      );
+      // Web.cafe uses links with specific classes for post listings
+      const postLinks = document.querySelectorAll('a[href*="/topic/"], a[href*="/tutorial/"], a[href*="/experience/"]');
 
-      for (const el of Array.from(postEls)) {
+      for (const linkEl of Array.from(postLinks)) {
         if (items.length >= maxPosts) break;
 
-        const titleEl = el.querySelector('h1, h2, h3, [class*="title"]');
+        const link = linkEl as HTMLAnchorElement;
+        const url = link.href;
+
+        // Title is in h2 or h3 within the link
+        const titleEl = link.querySelector('h2, h3');
         const title = titleEl?.textContent?.trim() || '';
         if (!title) continue;
 
-        const linkEl = el.querySelector('a[href*="/topic"], a[href*="/tutorial"], a[href*="/experience"]') as HTMLAnchorElement;
-        const url = linkEl?.href || '';
-        if (!url) continue;
-
-        const snippetEl = el.querySelector('p, [class*="content"], [class*="desc"], [class*="summary"]');
+        // Snippet is in p tag
+        const snippetEl = link.querySelector('p');
         const snippet = snippetEl?.textContent?.trim().slice(0, 200) || '';
 
-        const authorEl = el.querySelector('[class*="author"], [class*="user"]');
-        const author = authorEl?.textContent?.trim() || '';
+        // Date/author info is in the metadata div
+        const metaEl = link.querySelector('.text-gray-500, .text-xs');
+        const metaText = metaEl?.textContent?.trim() || '';
 
-        const dateEl = el.querySelector('time, [class*="date"]');
-        const date = dateEl?.getAttribute('datetime') || dateEl?.textContent?.trim() || '';
+        // Extract date if present
+        const dateMatch = metaText.match(/\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}/);
+        const date = dateMatch ? dateMatch[0] : '';
+
+        const author = '';
 
         items.push({ title, snippet, url, author, date });
       }
