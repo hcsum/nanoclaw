@@ -10,7 +10,6 @@ import { isValidGroupFolder } from './group-folder.js';
 import { logger } from './logger.js';
 import { RegisteredGroup } from './types.js';
 import { handleXIpc } from './x-integration.js';
-import { handleBrowserIpc } from './browser.js';
 
 export interface IpcDeps {
   sendMessage: (jid: string, text: string) => Promise<void>;
@@ -453,10 +452,7 @@ export async function processTaskIpc(
 
     default:
       const handledByX = await handleXIpc(data, sourceGroup, isMain, DATA_DIR);
-      const handledByBrowser =
-        !handledByX &&
-        (await handleBrowserIpc(data, sourceGroup, isMain, DATA_DIR));
-      if (!handledByX && !handledByBrowser) {
+      if (!handledByX) {
         logger.warn({ type: data.type }, 'Unknown IPC task type');
       }
   }
