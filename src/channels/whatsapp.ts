@@ -25,9 +25,11 @@ import {
   OnChatMetadata,
   RegisteredGroup,
 } from '../types.js';
+import { getProxyAgent, prepareProxyEnvironment } from '../proxy.js';
 import { registerChannel, ChannelOpts } from './registry.js';
 
 const GROUP_SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
+let hasLoggedProxyConfig = false;
 
 export interface WhatsAppChannelOpts {
   onMessage: OnInboundMessage;
@@ -62,6 +64,13 @@ export class WhatsAppChannel implements Channel {
     fs.mkdirSync(authDir, { recursive: true });
 
     const { state, saveCreds } = await useMultiFileAuthState(authDir);
+    const proxySummary = prepareProxyEnvironment();
+    const proxyAgent = getProxyAgent();
+
+    if (proxySummary && !hasLoggedProxyConfig) {
+      logger.info({ proxy: proxySummary }, 'WhatsApp proxy enabled');
+      hasLoggedProxyConfig = true;
+    }
 
     const { version } = await fetchLatestWaWebVersion({}).catch((err) => {
       logger.warn(
@@ -79,6 +88,7 @@ export class WhatsAppChannel implements Channel {
       printQRInTerminal: false,
       logger,
       browser: Browsers.macOS('Chrome'),
+      agent: proxyAgent,
     });
 
     this.sock.ev.on('connection.update', (update) => {

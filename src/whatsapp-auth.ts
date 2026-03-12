@@ -20,6 +20,8 @@ import makeWASocket, {
   useMultiFileAuthState,
 } from '@whiskeysockets/baileys';
 
+import { getProxyAgent, prepareProxyEnvironment } from './proxy.js';
+
 const AUTH_DIR = './store/auth';
 const QR_FILE = './store/qr-data.txt';
 const STATUS_FILE = './store/auth-status.txt';
@@ -50,6 +52,8 @@ async function connectSocket(
   isReconnect = false,
 ): Promise<void> {
   const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
+  const proxySummary = prepareProxyEnvironment();
+  const proxyAgent = getProxyAgent();
 
   if (state.creds.registered && !isReconnect) {
     fs.writeFileSync(STATUS_FILE, 'already_authenticated');
@@ -58,6 +62,10 @@ async function connectSocket(
       '  To re-authenticate, delete the store/auth folder and run again.',
     );
     process.exit(0);
+  }
+
+  if (proxySummary && !isReconnect) {
+    console.log(`Using WhatsApp proxy: ${JSON.stringify(proxySummary)}`);
   }
 
   const { version } = await fetchLatestWaWebVersion({}).catch((err) => {
@@ -76,6 +84,7 @@ async function connectSocket(
     printQRInTerminal: false,
     logger,
     browser: Browsers.macOS('Chrome'),
+    agent: proxyAgent,
   });
 
   if (usePairingCode && phoneNumber && !state.creds.me) {

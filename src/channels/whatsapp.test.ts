@@ -45,6 +45,20 @@ vi.mock('child_process', () => ({
   exec: vi.fn(),
 }));
 
+const { fakeProxyAgent, ProxyAgentMock } = vi.hoisted(() => {
+  const fakeProxyAgent = { destroy: vi.fn() };
+  function MockProxyAgent() {
+    return fakeProxyAgent;
+  }
+  return {
+    fakeProxyAgent,
+    ProxyAgentMock: vi.fn(MockProxyAgent),
+  };
+});
+vi.mock('proxy-agent', () => ({
+  ProxyAgent: ProxyAgentMock,
+}));
+
 // Build a fake WASocket that's an EventEmitter with the methods we need
 function createFakeSocket() {
   const ev = new EventEmitter();
@@ -151,6 +165,15 @@ describe('WhatsAppChannel', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    delete process.env.HTTPS_PROXY;
+    delete process.env.https_proxy;
+    delete process.env.HTTP_PROXY;
+    delete process.env.http_proxy;
+    delete process.env.ALL_PROXY;
+    delete process.env.all_proxy;
+    delete process.env.NO_PROXY;
+    delete process.env.no_proxy;
+    delete process.env.NODE_USE_ENV_PROXY;
   });
 
   /**
@@ -191,6 +214,21 @@ describe('WhatsAppChannel', () => {
 
       // Should still connect successfully despite fetch failure
       expect(channel.isConnected()).toBe(true);
+    });
+
+    it('passes a proxy agent to Baileys when proxy env is configured', async () => {
+      process.env.https_proxy = 'http://127.0.0.1:7890';
+      const opts = createTestOpts();
+      const channel = new WhatsAppChannel(opts);
+      await connectChannel(channel);
+
+      const { default: makeWASocket } = await import('@whiskeysockets/baileys');
+      expect(ProxyAgentMock).toHaveBeenCalled();
+      expect(makeWASocket).toHaveBeenCalledWith(
+        expect.objectContaining({
+          agent: fakeProxyAgent,
+        }),
+      );
     });
   });
 
