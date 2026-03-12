@@ -31,7 +31,9 @@ type ProxySummary = Partial<{
 
 let cachedProxyAgent: ProxyAgent | undefined;
 
-function firstDefined(...values: Array<string | undefined>): string | undefined {
+function firstDefined(
+  ...values: Array<string | undefined>
+): string | undefined {
   return values.find((value) => value && value.trim().length > 0)?.trim();
 }
 
