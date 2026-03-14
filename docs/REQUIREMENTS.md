@@ -107,7 +107,7 @@ A personal Claude assistant accessible via WhatsApp, with minimal custom code.
 - Each agent invocation spawns a container with mounted directories
 - Containers provide filesystem isolation - agents can only see mounted paths
 - Bash access is safe because commands run inside the container, not on the host
-- Browser automation via agent-browser with Chromium in the container
+- Browser automation via agent-browser in a headed browser on the host
 
 ### Scheduled Tasks
 - Users can ask Claude to schedule recurring or one-time tasks from any group
@@ -154,7 +154,7 @@ A personal Claude assistant accessible via WhatsApp, with minimal custom code.
 - Standard Claude Agent SDK capabilities
 
 ### Browser Automation
-- agent-browser CLI with Chromium in container
+- agent-browser CLI proxied from the container to the host's headed browser
 - Snapshot-based interaction with element references (@e1, @e2, etc.)
 - Screenshots, PDFs, video recording
 - Authentication state persistence

@@ -3,12 +3,14 @@ import path from 'path';
 
 import {
   ASSISTANT_NAME,
+  BROWSER_PROXY_PORT,
   CREDENTIAL_PROXY_PORT,
   IDLE_TIMEOUT,
   POLL_INTERVAL,
   TIMEZONE,
   TRIGGER_PATTERN,
 } from './config.js';
+import { startBrowserProxy } from './browser-proxy.js';
 import { startCredentialProxy } from './credential-proxy.js';
 import './channels/index.js';
 import {
@@ -482,11 +484,15 @@ async function main(): Promise<void> {
     CREDENTIAL_PROXY_PORT,
     PROXY_BIND_HOST,
   );
+  const browserProxy = await startBrowserProxy(BROWSER_PROXY_PORT);
+  process.env.NANOCLAW_BROWSER_PROXY_PORT = String(browserProxy.port);
+  process.env.NANOCLAW_BROWSER_PROXY_TOKEN = browserProxy.token;
 
   // Graceful shutdown handlers
   const shutdown = async (signal: string) => {
     logger.info({ signal }, 'Shutdown signal received');
     proxyServer.close();
+    browserProxy.server.close();
     await queue.shutdown(10000);
     for (const ch of channels) await ch.disconnect();
     process.exit(0);

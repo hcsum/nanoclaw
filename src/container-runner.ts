@@ -7,6 +7,7 @@ import fs from 'fs';
 import path from 'path';
 
 import {
+  BROWSER_PROXY_PORT,
   CONTAINER_IMAGE,
   CONTAINER_MAX_OUTPUT_SIZE,
   CONTAINER_TIMEOUT,
@@ -209,6 +210,23 @@ function buildVolumeMounts(
     mounts.push(...validatedMounts);
   }
 
+  const browserProxyWrapper = path.join(
+    projectRoot,
+    'container',
+    'bin',
+    'agent-browser',
+  );
+  if (
+    fs.existsSync(browserProxyWrapper) &&
+    process.env.NANOCLAW_BROWSER_PROXY_TOKEN
+  ) {
+    mounts.push({
+      hostPath: browserProxyWrapper,
+      containerPath: '/usr/local/bin/agent-browser',
+      readonly: true,
+    });
+  }
+
   return mounts;
 }
 
@@ -226,6 +244,18 @@ function buildContainerArgs(
     '-e',
     `ANTHROPIC_BASE_URL=http://${CONTAINER_HOST_GATEWAY}:${CREDENTIAL_PROXY_PORT}`,
   );
+  if (process.env.NANOCLAW_BROWSER_PROXY_TOKEN) {
+    const browserProxyPort =
+      process.env.NANOCLAW_BROWSER_PROXY_PORT || String(BROWSER_PROXY_PORT);
+    args.push(
+      '-e',
+      `NANOCLAW_BROWSER_PROXY_URL=http://${CONTAINER_HOST_GATEWAY}:${browserProxyPort}/exec`,
+      '-e',
+      `NANOCLAW_BROWSER_PROXY_TOKEN=${process.env.NANOCLAW_BROWSER_PROXY_TOKEN}`,
+      '-e',
+      `NANOCLAW_HOST_PROJECT_DIR=${process.cwd()}`,
+    );
+  }
 
   // Mirror the host's auth method with a placeholder value.
   // API key mode: SDK sends x-api-key, proxy replaces with real key.
@@ -279,6 +309,18 @@ export async function runContainerAgent(
   const safeName = group.folder.replace(/[^a-zA-Z0-9-]/g, '-');
   const containerName = `nanoclaw-${safeName}-${Date.now()}`;
   const containerArgs = buildContainerArgs(mounts, containerName);
+  if (process.env.NANOCLAW_BROWSER_PROXY_TOKEN) {
+    containerArgs.push(
+      '-e',
+      `NANOCLAW_HOST_GROUP_DIR=${groupDir}`,
+      '-e',
+      `NANOCLAW_HOST_IPC_DIR=${resolveGroupIpcPath(group.folder)}`,
+    );
+    const globalDir = path.join(GROUPS_DIR, 'global');
+    if (fs.existsSync(globalDir)) {
+      containerArgs.push('-e', `NANOCLAW_HOST_GLOBAL_DIR=${globalDir}`);
+    }
+  }
 
   logger.debug(
     {

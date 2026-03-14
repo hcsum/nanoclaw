@@ -73,6 +73,7 @@ function setupLaunchd(
   nodePath: string,
   homeDir: string,
 ): void {
+  const nodeBinDir = path.dirname(nodePath);
   const plistPath = path.join(
     homeDir,
     'Library',
@@ -101,7 +102,7 @@ function setupLaunchd(
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
-        <string>/usr/local/bin:/usr/bin:/bin:${homeDir}/.local/bin</string>
+        <string>${nodeBinDir}:/usr/local/bin:/usr/bin:/bin:${homeDir}/.local/bin</string>
         <key>HOME</key>
         <string>${homeDir}</string>
     </dict>
@@ -206,6 +207,7 @@ function setupSystemd(
   nodePath: string,
   homeDir: string,
 ): void {
+  const nodeBinDir = path.dirname(nodePath);
   const runningAsRoot = isRoot();
 
   // Root uses system-level service, non-root uses user-level
@@ -244,7 +246,7 @@ WorkingDirectory=${projectRoot}
 Restart=always
 RestartSec=5
 Environment=HOME=${homeDir}
-Environment=PATH=/usr/local/bin:/usr/bin:/bin:${homeDir}/.local/bin
+Environment=PATH=${nodeBinDir}:/usr/local/bin:/usr/bin:/bin:${homeDir}/.local/bin
 StandardOutput=append:${projectRoot}/logs/nanoclaw.log
 StandardError=append:${projectRoot}/logs/nanoclaw.error.log
 

@@ -1,10 +1,12 @@
 ---
 name: agent-browser
-description: Browse the web for any task — research topics, read articles, interact with web apps, fill forms, take screenshots, extract data, and test web pages. Use whenever a browser would be useful, not just when the user explicitly asks.
+description: Browse the web for any task — research topics, read articles, interact with web apps, fill forms, take screenshots, extract data, and test web pages. Commands run in a headed browser on the host, not a headless browser in the container.
 allowed-tools: Bash(agent-browser:*)
 ---
 
 # Browser Automation with agent-browser
+
+`agent-browser` runs against the host machine's headed browser session. Files saved under `/workspace/group` still land in the group's mounted folder.
 
 ## Quick start
 
