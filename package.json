@@ -16,7 +16,11 @@
     "setup": "tsx setup/index.ts",
     "auth": "tsx src/whatsapp-auth.ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "mac:start": "launchctl load ~/Library/LaunchAgents/com.nanoclaw.plist",
+    "mac:stop": "launchctl unload ~/Library/LaunchAgents/com.nanoclaw.plist",
+    "mac:restart": "launchctl kickstart -k gui/$(id -u)/com.nanoclaw",
+    "log": "tail -f logs/nanoclaw.log"
   },
   "dependencies": {
     "@types/qrcode-terminal": "^0.12.0",
@@ -25,6 +29,7 @@
     "grammy": "^1.39.3",
     "cron-parser": "^5.5.0",
     "dotenv-cli": "^11.0.0",
+    "grammy": "^1.41.1",
     "link-preview-js": "^3.2.0",
     "pino": "^9.6.0",
     "pino-pretty": "^13.0.0",

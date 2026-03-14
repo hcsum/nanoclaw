@@ -408,4 +408,4 @@ export class WhatsAppChannel implements Channel {
   }
 }
 
-registerChannel('whatsapp', (opts: ChannelOpts) => new WhatsAppChannel(opts));
+// registerChannel('whatsapp', (opts: ChannelOpts) => new WhatsAppChannel(opts));
