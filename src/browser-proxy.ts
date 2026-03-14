@@ -25,7 +25,10 @@ interface BrowserProxyResponse {
 
 function getCommandCandidates(): string[] {
   const configured = process.env.AGENT_BROWSER_HOST_COMMAND?.trim();
-  const nodeSibling = path.join(path.dirname(process.execPath), 'agent-browser');
+  const nodeSibling = path.join(
+    path.dirname(process.execPath),
+    'agent-browser',
+  );
 
   return [configured, nodeSibling, 'agent-browser'].filter(
     (value): value is string => Boolean(value),
@@ -43,7 +46,9 @@ function resolveAgentBrowserCommand(): string {
 }
 
 function isValidArgv(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((item) => typeof item === 'string');
+  return (
+    Array.isArray(value) && value.every((item) => typeof item === 'string')
+  );
 }
 
 function readJsonBody(req: http.IncomingMessage): Promise<BrowserProxyRequest> {

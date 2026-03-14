@@ -42,8 +42,8 @@ function createMockServer() {
   let handler: http.RequestListener | undefined;
 
   const server = {
-    listen: vi.fn(
-      (_port: number, _host: string, callback: () => void) => callback(),
+    listen: vi.fn((_port: number, _host: string, callback: () => void) =>
+      callback(),
     ),
     on: vi.fn(),
     close: vi.fn((callback?: () => void) => callback?.()),
