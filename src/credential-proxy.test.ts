@@ -44,7 +44,7 @@ function makeRequest(
 }
 
 describe('credential-proxy', () => {
-  let proxyServer: http.Server;
+  let proxyServer: http.Server | undefined;
   let upstreamServer: http.Server;
   let proxyPort: number;
   let upstreamPort: number;
@@ -65,8 +65,14 @@ describe('credential-proxy', () => {
   });
 
   afterEach(async () => {
-    await new Promise<void>((r) => proxyServer?.close(() => r()));
-    await new Promise<void>((r) => upstreamServer?.close(() => r()));
+    if (proxyServer) {
+      const server = proxyServer;
+      server.closeAllConnections();
+      await new Promise<void>((r) => server.close(() => r()));
+    }
+    upstreamServer.closeAllConnections();
+    await new Promise<void>((r) => upstreamServer.close(() => r()));
+    proxyServer = undefined;
     for (const key of Object.keys(mockEnv)) delete mockEnv[key];
   });
 

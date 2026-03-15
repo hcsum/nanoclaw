@@ -7,7 +7,6 @@ import fs from 'fs';
 import path from 'path';
 
 import {
-  BROWSER_PROXY_PORT,
   CONTAINER_IMAGE,
   CONTAINER_MAX_OUTPUT_SIZE,
   CONTAINER_TIMEOUT,
@@ -15,6 +14,7 @@ import {
   DATA_DIR,
   GROUPS_DIR,
   IDLE_TIMEOUT,
+  MODEL_OVERRIDE,
   TIMEZONE,
 } from './config.js';
 import { resolveGroupFolderPath, resolveGroupIpcPath } from './group-folder.js';
@@ -26,6 +26,7 @@ import {
   readonlyMountArgs,
   stopContainer,
 } from './container-runtime.js';
+import { readEnvFile } from './env.js';
 import { detectAuthMode } from './credential-proxy.js';
 import { validateAdditionalMounts } from './mount-security.js';
 import { RegisteredGroup } from './types.js';
@@ -55,6 +56,23 @@ interface VolumeMount {
   hostPath: string;
   containerPath: string;
   readonly: boolean;
+}
+
+function getCustomGatewayEnv(): Record<string, string> | null {
+  const secrets = readEnvFile([
+    'ANTHROPIC_BASE_URL',
+    'ANTHROPIC_API_KEY',
+    'ANTHROPIC_AUTH_TOKEN',
+    'CLAUDE_CODE_OAUTH_TOKEN',
+  ]);
+
+  const baseUrl = secrets.ANTHROPIC_BASE_URL;
+  if (!baseUrl) return null;
+
+  const upstreamUrl = new URL(baseUrl);
+  if (upstreamUrl.hostname === 'api.anthropic.com') return null;
+
+  return secrets;
 }
 
 function buildVolumeMounts(
@@ -210,23 +228,6 @@ function buildVolumeMounts(
     mounts.push(...validatedMounts);
   }
 
-  const browserProxyWrapper = path.join(
-    projectRoot,
-    'container',
-    'bin',
-    'agent-browser',
-  );
-  if (
-    fs.existsSync(browserProxyWrapper) &&
-    process.env.NANOCLAW_BROWSER_PROXY_TOKEN
-  ) {
-    mounts.push({
-      hostPath: browserProxyWrapper,
-      containerPath: '/usr/local/bin/agent-browser',
-      readonly: true,
-    });
-  }
-
   return mounts;
 }
 
@@ -235,39 +236,53 @@ function buildContainerArgs(
   containerName: string,
 ): string[] {
   const args: string[] = ['run', '-i', '--rm', '--name', containerName];
+  const customGatewayEnv = getCustomGatewayEnv();
 
   // Pass host timezone so container's local time matches the user's
   args.push('-e', `TZ=${TIMEZONE}`);
 
-  // Route API traffic through the credential proxy (containers never see real secrets)
-  args.push(
-    '-e',
-    `ANTHROPIC_BASE_URL=http://${CONTAINER_HOST_GATEWAY}:${CREDENTIAL_PROXY_PORT}`,
-  );
-  if (process.env.NANOCLAW_BROWSER_PROXY_TOKEN) {
-    const browserProxyPort =
-      process.env.NANOCLAW_BROWSER_PROXY_PORT || String(BROWSER_PROXY_PORT);
+  if (customGatewayEnv?.ANTHROPIC_BASE_URL) {
+    // For third-party Anthropic-compatible gateways, pass the real base URL
+    // and auth env directly. This matches the working standalone SDK setup.
+    args.push('-e', `ANTHROPIC_BASE_URL=${customGatewayEnv.ANTHROPIC_BASE_URL}`);
+  } else {
+    // Route official Anthropic traffic through the credential proxy
+    // (containers never see real Anthropic secrets).
     args.push(
       '-e',
-      `NANOCLAW_BROWSER_PROXY_URL=http://${CONTAINER_HOST_GATEWAY}:${browserProxyPort}/exec`,
-      '-e',
-      `NANOCLAW_BROWSER_PROXY_TOKEN=${process.env.NANOCLAW_BROWSER_PROXY_TOKEN}`,
-      '-e',
-      `NANOCLAW_HOST_PROJECT_DIR=${process.cwd()}`,
+      `ANTHROPIC_BASE_URL=http://${CONTAINER_HOST_GATEWAY}:${CREDENTIAL_PROXY_PORT}`,
     );
   }
-
-  // Mirror the host's auth method with a placeholder value.
-  // API key mode: SDK sends x-api-key, proxy replaces with real key.
-  // OAuth mode:   SDK exchanges placeholder token for temp API key,
-  //               proxy injects real OAuth token on that exchange request.
-  const authMode = detectAuthMode();
-  if (authMode === 'api-key') {
-    args.push('-e', 'ANTHROPIC_API_KEY=placeholder');
+  if (customGatewayEnv) {
+    if (customGatewayEnv.ANTHROPIC_API_KEY) {
+      args.push('-e', `ANTHROPIC_API_KEY=${customGatewayEnv.ANTHROPIC_API_KEY}`);
+    }
+    if (customGatewayEnv.ANTHROPIC_AUTH_TOKEN) {
+      args.push(
+        '-e',
+        `ANTHROPIC_AUTH_TOKEN=${customGatewayEnv.ANTHROPIC_AUTH_TOKEN}`,
+      );
+    }
+    if (customGatewayEnv.CLAUDE_CODE_OAUTH_TOKEN) {
+      args.push(
+        '-e',
+        `CLAUDE_CODE_OAUTH_TOKEN=${customGatewayEnv.CLAUDE_CODE_OAUTH_TOKEN}`,
+      );
+    }
   } else {
-    args.push('-e', 'CLAUDE_CODE_OAUTH_TOKEN=placeholder');
+    // Mirror the host's auth env shape with a placeholder value.
+    // API requests then flow through the credential proxy.
+    const authMode = detectAuthMode();
+    if (authMode === 'api-key') {
+      args.push('-e', 'ANTHROPIC_API_KEY=placeholder');
+    } else {
+      args.push('-e', 'CLAUDE_CODE_OAUTH_TOKEN=placeholder');
+    }
   }
 
+  if (MODEL_OVERRIDE) {
+    args.push('-e', `ANTHROPIC_MODEL=${MODEL_OVERRIDE}`);
+  }
   // Runtime-specific args for host gateway resolution
   args.push(...hostGatewayArgs());
 
@@ -309,18 +324,6 @@ export async function runContainerAgent(
   const safeName = group.folder.replace(/[^a-zA-Z0-9-]/g, '-');
   const containerName = `nanoclaw-${safeName}-${Date.now()}`;
   const containerArgs = buildContainerArgs(mounts, containerName);
-  if (process.env.NANOCLAW_BROWSER_PROXY_TOKEN) {
-    containerArgs.push(
-      '-e',
-      `NANOCLAW_HOST_GROUP_DIR=${groupDir}`,
-      '-e',
-      `NANOCLAW_HOST_IPC_DIR=${resolveGroupIpcPath(group.folder)}`,
-    );
-    const globalDir = path.join(GROUPS_DIR, 'global');
-    if (fs.existsSync(globalDir)) {
-      containerArgs.push('-e', `NANOCLAW_HOST_GLOBAL_DIR=${globalDir}`);
-    }
-  }
 
   logger.debug(
     {
@@ -341,6 +344,7 @@ export async function runContainerAgent(
       containerName,
       mountCount: mounts.length,
       isMain: input.isMain,
+      model: MODEL_OVERRIDE || 'default',
     },
     'Spawning container agent',
   );
