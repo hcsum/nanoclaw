@@ -23,6 +23,7 @@
     "log": "tail -f logs/nanoclaw.log"
   },
   "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.2.76",
     "@types/qrcode-terminal": "^0.12.0",
     "@whiskeysockets/baileys": "^7.0.0-rc.9",
     "better-sqlite3": "^11.8.1",

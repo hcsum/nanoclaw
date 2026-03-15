@@ -244,7 +244,10 @@ function buildContainerArgs(
   if (customGatewayEnv?.ANTHROPIC_BASE_URL) {
     // For third-party Anthropic-compatible gateways, pass the real base URL
     // and auth env directly. This matches the working standalone SDK setup.
-    args.push('-e', `ANTHROPIC_BASE_URL=${customGatewayEnv.ANTHROPIC_BASE_URL}`);
+    args.push(
+      '-e',
+      `ANTHROPIC_BASE_URL=${customGatewayEnv.ANTHROPIC_BASE_URL}`,
+    );
   } else {
     // Route official Anthropic traffic through the credential proxy
     // (containers never see real Anthropic secrets).
@@ -255,7 +258,10 @@ function buildContainerArgs(
   }
   if (customGatewayEnv) {
     if (customGatewayEnv.ANTHROPIC_API_KEY) {
-      args.push('-e', `ANTHROPIC_API_KEY=${customGatewayEnv.ANTHROPIC_API_KEY}`);
+      args.push(
+        '-e',
+        `ANTHROPIC_API_KEY=${customGatewayEnv.ANTHROPIC_API_KEY}`,
+      );
     }
     if (customGatewayEnv.ANTHROPIC_AUTH_TOKEN) {
       args.push(

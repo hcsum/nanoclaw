@@ -231,10 +231,7 @@ describe('container-runner timeout behavior', () => {
 
     expect(spawn).toHaveBeenCalledWith(
       expect.any(String),
-      expect.arrayContaining([
-        '-e',
-        'ANTHROPIC_MODEL=deepseek-chat',
-      ]),
+      expect.arrayContaining(['-e', 'ANTHROPIC_MODEL=deepseek-chat']),
       expect.anything(),
     );
   });
