@@ -7,6 +7,8 @@ description: Refresh NanoClaw MCP tool visibility after adding or changing tools
 
 Fix stale MCP tool registration by syncing per-session `agent-runner-src` caches and restarting the NanoClaw service.
 
+This is also the manual fix when `container/agent-runner/src/*` code changes are not taking effect, even if the issue is not MCP-tool-related. NanoClaw may keep using the per-session copy under `data/sessions/<group>/agent-runner-src/`, so rebuilding the host or container alone may not refresh runtime behavior.
+
 ## Runbook
 1. Confirm the tool exists in source:
    ```bash
@@ -24,6 +26,12 @@ Fix stale MCP tool registration by syncing per-session `agent-runner-src` caches
    ```text
    @Andy call mcp__nanoclaw__<tool_name> with a minimal test input
    ```
+
+## When To Use This
+- After editing `container/agent-runner/src/*`
+- When a new MCP tool does not appear after rebuild/restart
+- When runtime behavior still matches old `agent-runner` code after rebuild/restart
+- When different NanoClaw installs behave differently despite matching source and env vars
 
 ## What The Script Does
 - Copy `container/agent-runner/src/` into every `data/sessions/*/agent-runner-src/`

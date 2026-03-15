@@ -126,6 +126,12 @@ function log(message: string): void {
   console.error(`[agent-runner] ${message}`);
 }
 
+function redactSecret(value: string | undefined): string {
+  if (!value) return 'unset';
+  if (value.length <= 8) return `${value[0] ?? ''}***(${value.length})`;
+  return `${value.slice(0, 4)}...${value.slice(-4)} (${value.length})`;
+}
+
 interface ToolUseBlock {
   id?: string;
   type?: string;
@@ -763,7 +769,7 @@ async function main(): Promise<void> {
   }
 
   log(
-    `Agent config: model=${process.env.ANTHROPIC_MODEL || process.env.MODEL || 'default'}`,
+    `Agent config: model=${process.env.ANTHROPIC_MODEL || process.env.MODEL || 'default'}, baseUrl=${process.env.ANTHROPIC_BASE_URL || 'unset'}, apiKey=${redactSecret(process.env.ANTHROPIC_API_KEY)}, authToken=${redactSecret(process.env.ANTHROPIC_AUTH_TOKEN || process.env.CLAUDE_CODE_OAUTH_TOKEN)}`,
   );
 
   // Query loop: run query → wait for IPC message → run new query → repeat
