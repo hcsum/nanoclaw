@@ -1,6 +1,6 @@
 ---
 name: agent-browser
-description: Browse the web for any task — research topics, read articles, interact with web apps, fill forms, take screenshots, extract data, and test web pages.
+description: Browse the web quick tasks like get information.
 allowed-tools: Bash(agent-browser:*)
 ---
 
