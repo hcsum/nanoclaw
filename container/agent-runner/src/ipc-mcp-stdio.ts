@@ -15,8 +15,10 @@ const IPC_DIR = '/workspace/ipc';
 const MESSAGES_DIR = path.join(IPC_DIR, 'messages');
 const TASKS_DIR = path.join(IPC_DIR, 'tasks');
 const X_RESULTS_DIR = path.join(IPC_DIR, 'x_results');
+const BROWSER_USE_RESULTS_DIR = path.join(IPC_DIR, 'browser_use_results');
 const X_RESULT_POLL_MS = 1000;
 const X_RESULT_TIMEOUT_MS = 130000;
+const BROWSER_USE_RESULT_TIMEOUT_MS = 30 * 1000;
 
 // Context from environment variables (set by the agent runner)
 const chatJid = process.env.NANOCLAW_CHAT_JID!;
@@ -41,7 +43,18 @@ async function waitForXResult(
   requestId: string,
   timeoutMs = X_RESULT_TIMEOUT_MS,
 ): Promise<{ success: boolean; message: string }> {
-  const resultFile = path.join(X_RESULTS_DIR, `${requestId}.json`);
+  return waitForJsonResult(
+    path.join(X_RESULTS_DIR, `${requestId}.json`),
+    timeoutMs,
+    'X result',
+  );
+}
+
+async function waitForJsonResult(
+  resultFile: string,
+  timeoutMs: number,
+  label: string,
+): Promise<{ success: boolean; message: string; data?: unknown }> {
   let elapsed = 0;
 
   while (elapsed < timeoutMs) {
@@ -50,16 +63,18 @@ async function waitForXResult(
         const parsed = JSON.parse(fs.readFileSync(resultFile, 'utf-8')) as {
           success?: boolean;
           message?: string;
+          data?: unknown;
         };
         fs.unlinkSync(resultFile);
         return {
           success: parsed.success === true,
-          message: parsed.message || 'No message returned from X handler',
+          message: parsed.message || `No message returned from ${label} handler`,
+          data: parsed.data,
         };
       } catch (err) {
         return {
           success: false,
-          message: `Failed to parse X result: ${err instanceof Error ? err.message : String(err)}`,
+          message: `Failed to parse ${label}: ${err instanceof Error ? err.message : String(err)}`,
         };
       }
     }
@@ -68,13 +83,141 @@ async function waitForXResult(
     elapsed += X_RESULT_POLL_MS;
   }
 
-  return { success: false, message: 'X request timed out' };
+  return { success: false, message: `${label} timed out` };
 }
 
 const server = new McpServer({
   name: 'nanoclaw',
   version: '1.0.0',
 });
+
+server.tool(
+  'browser_use_research',
+  'Start a browser-use research task in the background and return a request ID immediately. Main group only. After calling this tool, do not use agent-browser, WebSearch, WebFetch, or any other browsing tool for the same task in the same turn. Stop and wait for the background result message or use browser_use_status/browser_use_cancel later.',
+  {
+    goal: z.string().min(1).describe('The research objective to investigate'),
+    start_url: z.string().url().optional().describe('Optional URL to begin from'),
+    max_steps: z.number().int().min(1).max(100).optional().describe('Optional cap on browser steps'),
+  },
+  async (args) => {
+    if (!isMain) {
+      return {
+        content: [{ type: 'text' as const, text: 'Only the main group can use browser-use research.' }],
+        isError: true,
+      };
+    }
+
+    const requestId = `browseruse-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    writeIpcFile(TASKS_DIR, {
+      type: 'browser_use_research',
+      requestId,
+      goal: args.goal,
+      startUrl: args.start_url,
+      maxSteps: args.max_steps,
+      chatJid,
+      groupFolder,
+      timestamp: new Date().toISOString(),
+    });
+
+    const result = await waitForJsonResult(
+      path.join(BROWSER_USE_RESULTS_DIR, `${requestId}.json`),
+      BROWSER_USE_RESULT_TIMEOUT_MS,
+      'browser-use result',
+    );
+
+    const responseText =
+      result.data != null
+        ? `${result.message}\n\n${JSON.stringify(result.data, null, 2)}`
+        : result.message;
+
+    return {
+      content: [{ type: 'text' as const, text: responseText }],
+      isError: !result.success,
+    };
+  },
+);
+
+server.tool(
+  'browser_use_status',
+  'Check the status of a browser-use background task by request ID. Main group only.',
+  {
+    request_id: z.string().min(1).describe('The request ID returned by browser_use_research'),
+  },
+  async (args) => {
+    if (!isMain) {
+      return {
+        content: [{ type: 'text' as const, text: 'Only the main group can use browser-use research.' }],
+        isError: true,
+      };
+    }
+
+    const requestId = `browserusestatus-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    writeIpcFile(TASKS_DIR, {
+      type: 'browser_use_status',
+      requestId,
+      targetRequestId: args.request_id,
+      groupFolder,
+      timestamp: new Date().toISOString(),
+    });
+
+    const result = await waitForJsonResult(
+      path.join(BROWSER_USE_RESULTS_DIR, `${requestId}.json`),
+      BROWSER_USE_RESULT_TIMEOUT_MS,
+      'browser-use status result',
+    );
+
+    const responseText =
+      result.data != null
+        ? `${result.message}\n\n${JSON.stringify(result.data, null, 2)}`
+        : result.message;
+
+    return {
+      content: [{ type: 'text' as const, text: responseText }],
+      isError: !result.success,
+    };
+  },
+);
+
+server.tool(
+  'browser_use_cancel',
+  'Cancel a running browser-use background task by request ID. Main group only.',
+  {
+    request_id: z.string().min(1).describe('The request ID returned by browser_use_research'),
+  },
+  async (args) => {
+    if (!isMain) {
+      return {
+        content: [{ type: 'text' as const, text: 'Only the main group can use browser-use research.' }],
+        isError: true,
+      };
+    }
+
+    const requestId = `browserusecancel-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    writeIpcFile(TASKS_DIR, {
+      type: 'browser_use_cancel',
+      requestId,
+      targetRequestId: args.request_id,
+      groupFolder,
+      timestamp: new Date().toISOString(),
+    });
+
+    const result = await waitForJsonResult(
+      path.join(BROWSER_USE_RESULTS_DIR, `${requestId}.json`),
+      BROWSER_USE_RESULT_TIMEOUT_MS,
+      'browser-use cancel result',
+    );
+
+    const responseText =
+      result.data != null
+        ? `${result.message}\n\n${JSON.stringify(result.data, null, 2)}`
+        : result.message;
+
+    return {
+      content: [{ type: 'text' as const, text: responseText }],
+      isError: !result.success,
+    };
+  },
+);
 
 server.tool(
   'send_message',

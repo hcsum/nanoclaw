@@ -9,6 +9,7 @@ import { createTask, deleteTask, getTaskById, updateTask } from './db.js';
 import { isValidGroupFolder } from './group-folder.js';
 import { logger } from './logger.js';
 import { RegisteredGroup } from './types.js';
+import { handleBrowserUseIpc } from './browser-use.js';
 import { handleXIpc } from './x-integration.js';
 
 export interface IpcDeps {
@@ -172,6 +173,11 @@ export async function processTaskIpc(
     trigger?: string;
     requiresTrigger?: boolean;
     containerConfig?: RegisteredGroup['containerConfig'];
+    requestId?: string;
+    targetRequestId?: string;
+    goal?: string;
+    startUrl?: string;
+    maxSteps?: number;
   },
   sourceGroup: string, // Verified identity from IPC directory
   isMain: boolean, // Verified from directory path
@@ -451,6 +457,15 @@ export async function processTaskIpc(
       break;
 
     default:
+      const handledByBrowserUse = await handleBrowserUseIpc(
+        data,
+        sourceGroup,
+        isMain,
+        DATA_DIR,
+      );
+      if (handledByBrowserUse) {
+        break;
+      }
       const handledByX = await handleXIpc(data, sourceGroup, isMain, DATA_DIR);
       if (!handledByX) {
         logger.warn({ type: data.type }, 'Unknown IPC task type');
