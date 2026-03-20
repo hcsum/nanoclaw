@@ -18,7 +18,7 @@ interface FeedItem {
 }
 
 function clampLimit(input?: number): number {
-  if (!Number.isFinite(input)) return 25;
+  if (!Number.isFinite(input)) return 40;
   const n = Math.floor(Number(input));
   if (n < 5) return 5;
   if (n > 60) return 60;

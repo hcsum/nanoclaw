@@ -33,6 +33,7 @@ async function setup(): Promise<void> {
     viewport: config.viewport,
     args: config.chromeArgs.slice(0, 3), // Use first 3 args for setup (less restrictive)
     ignoreDefaultArgs: config.chromeIgnoreDefaultArgs,
+    proxy: config.browserProxy,
   });
 
   const page = context.pages()[0] || await context.newPage();

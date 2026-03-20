@@ -43,15 +43,22 @@ def read_json_stdin() -> dict[str, Any]:
 
 
 def build_proxy() -> ProxySettings | None:
-    proxy_server = get_env("BROWSER_USE_PROXY_SERVER")
+    proxy_server = (
+        get_env("ALL_PROXY")
+        or get_env("all_proxy")
+        or get_env("HTTPS_PROXY")
+        or get_env("https_proxy")
+        or get_env("HTTP_PROXY")
+        or get_env("http_proxy")
+    )
     if not proxy_server:
         return None
 
     return ProxySettings(
         server=proxy_server,
-        bypass=get_env("BROWSER_USE_PROXY_BYPASS"),
-        username=get_env("BROWSER_USE_PROXY_USERNAME"),
-        password=get_env("BROWSER_USE_PROXY_PASSWORD"),
+        bypass=get_env("NO_PROXY") or get_env("no_proxy"),
+        username=get_env("PROXY_USERNAME"),
+        password=get_env("PROXY_PASSWORD"),
     )
 
 

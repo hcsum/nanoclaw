@@ -83,6 +83,7 @@ export async function getBrowserContext(): Promise<BrowserContext> {
     viewport: config.viewport,
     args: config.chromeArgs,
     ignoreDefaultArgs: config.chromeIgnoreDefaultArgs,
+    proxy: config.browserProxy,
   });
 
   return context;

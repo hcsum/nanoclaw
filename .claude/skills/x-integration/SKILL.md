@@ -62,6 +62,10 @@ launchctl kickstart -k gui/$(id -u)/com.nanoclaw  # macOS
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `CHROME_PATH` | `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome` | Chrome executable path |
+| `ALL_PROXY` / `HTTPS_PROXY` / `HTTP_PROXY` | empty | Proxy server used by X browser automation |
+| `NO_PROXY` | empty | Comma-separated proxy bypass list |
+| `PROXY_USERNAME` | empty | Optional proxy username |
+| `PROXY_PASSWORD` | empty | Optional proxy password |
 | `NANOCLAW_ROOT` | `process.cwd()` | Project root directory |
 | `LOG_LEVEL` | `info` | Logging level (debug, info, warn, error) |
 

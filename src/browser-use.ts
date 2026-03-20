@@ -63,10 +63,16 @@ function readBrowserUseEnv(): Record<string, string> {
     'BROWSER_USE_HEADLESS',
     'BROWSER_USE_MAX_STEPS',
     'BROWSER_USE_USER_DATA_DIR',
-    'BROWSER_USE_PROXY_SERVER',
-    'BROWSER_USE_PROXY_BYPASS',
-    'BROWSER_USE_PROXY_USERNAME',
-    'BROWSER_USE_PROXY_PASSWORD',
+    'ALL_PROXY',
+    'all_proxy',
+    'HTTPS_PROXY',
+    'https_proxy',
+    'HTTP_PROXY',
+    'http_proxy',
+    'NO_PROXY',
+    'no_proxy',
+    'PROXY_USERNAME',
+    'PROXY_PASSWORD',
     'BROWSER_USE_PYTHON',
     'BROWSER_USE_REFERENCE_DIR',
     'BROWSER_USE_LOGIN_URL',
@@ -100,29 +106,29 @@ function readBrowserUseEnv(): Record<string, string> {
       envFile.BROWSER_USE_USER_DATA_DIR ||
       path.join(process.cwd(), 'data', 'browser-use-profile'),
     BROWSER_USE_PROXY_SERVER:
-      process.env.BROWSER_USE_PROXY_SERVER ||
-      envFile.BROWSER_USE_PROXY_SERVER ||
       process.env.ALL_PROXY ||
       process.env.all_proxy ||
+      envFile.ALL_PROXY ||
+      envFile.all_proxy ||
       process.env.HTTPS_PROXY ||
       process.env.https_proxy ||
+      envFile.HTTPS_PROXY ||
+      envFile.https_proxy ||
       process.env.HTTP_PROXY ||
       process.env.http_proxy ||
+      envFile.HTTP_PROXY ||
+      envFile.http_proxy ||
       '',
     BROWSER_USE_PROXY_BYPASS:
-      process.env.BROWSER_USE_PROXY_BYPASS ||
-      envFile.BROWSER_USE_PROXY_BYPASS ||
       process.env.NO_PROXY ||
       process.env.no_proxy ||
+      envFile.NO_PROXY ||
+      envFile.no_proxy ||
       '',
     BROWSER_USE_PROXY_USERNAME:
-      process.env.BROWSER_USE_PROXY_USERNAME ||
-      envFile.BROWSER_USE_PROXY_USERNAME ||
-      '',
+      process.env.PROXY_USERNAME || envFile.PROXY_USERNAME || '',
     BROWSER_USE_PROXY_PASSWORD:
-      process.env.BROWSER_USE_PROXY_PASSWORD ||
-      envFile.BROWSER_USE_PROXY_PASSWORD ||
-      '',
+      process.env.PROXY_PASSWORD || envFile.PROXY_PASSWORD || '',
     BROWSER_USE_PYTHON:
       process.env.BROWSER_USE_PYTHON || envFile.BROWSER_USE_PYTHON || '',
     BROWSER_USE_REFERENCE_DIR:

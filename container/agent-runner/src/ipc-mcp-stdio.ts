@@ -522,7 +522,7 @@ server.tool(
       .int()
       .min(5)
       .max(60)
-      .default(25)
+      .default(40)
       .describe('Number of posts to fetch (5-60)'),
   },
   async (args) => {
