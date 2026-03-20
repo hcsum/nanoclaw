@@ -73,6 +73,48 @@ let messageLoopRunning = false;
 const channels: Channel[] = [];
 const queue = new GroupQueue();
 
+function writePromptSnapshot(
+  group: RegisteredGroup,
+  chatJid: string,
+  prompt: string,
+  source: 'fresh-run' | 'piped-message',
+  messageCount: number,
+): void {
+  try {
+    const groupDir = resolveGroupFolderPath(group.folder);
+    const promptsDir = path.join(groupDir, 'logs', 'prompts');
+    fs.mkdirSync(promptsDir, { recursive: true });
+
+    const timestamp = new Date().toISOString();
+    const safeTimestamp = timestamp.replace(/[:.]/g, '-');
+    const filePath = path.join(
+      promptsDir,
+      `prompt-${safeTimestamp}-${source}.xml`,
+    );
+    const sessionId = sessions[group.folder] || 'new';
+    const content = [
+      `# NanoClaw prompt snapshot`,
+      `timestamp: ${timestamp}`,
+      `source: ${source}`,
+      `group: ${group.name}`,
+      `groupFolder: ${group.folder}`,
+      `chatJid: ${chatJid}`,
+      `sessionId: ${sessionId}`,
+      `messageCount: ${messageCount}`,
+      '',
+      prompt,
+      '',
+    ].join('\n');
+
+    fs.writeFileSync(filePath, content, 'utf-8');
+  } catch (err) {
+    logger.warn(
+      { group: group.name, chatJid, err },
+      'Failed to write prompt snapshot',
+    );
+  }
+}
+
 function loadState(): void {
   lastTimestamp = getRouterState('last_timestamp') || '';
   const agentTs = getRouterState('last_agent_timestamp');
@@ -181,6 +223,13 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
   }
 
   const prompt = formatMessages(missedMessages, TIMEZONE);
+  writePromptSnapshot(
+    group,
+    chatJid,
+    prompt,
+    'fresh-run',
+    missedMessages.length,
+  );
 
   // Advance cursor so the piping path in startMessageLoop won't re-fetch
   // these messages. Save the old cursor so we can roll back on error.
@@ -419,6 +468,13 @@ async function startMessageLoop(): Promise<void> {
           const messagesToSend =
             allPending.length > 0 ? allPending : groupMessages;
           const formatted = formatMessages(messagesToSend, TIMEZONE);
+          writePromptSnapshot(
+            group,
+            chatJid,
+            formatted,
+            'piped-message',
+            messagesToSend.length,
+          );
 
           if (queue.sendMessage(chatJid, formatted)) {
             logger.debug(
