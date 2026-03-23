@@ -218,7 +218,7 @@ export async function handleXIpc(
       }
       result = await runScript('search', {
         query: data.query,
-        limit: Number.isFinite(data.limit) ? data.limit : 20,
+        limit: Number.isFinite(data.limit) ? data.limit : 40,
       });
       break;
     default:
