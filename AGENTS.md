@@ -151,3 +151,4 @@ This file is for coding agents working in `/Users/sum/Codes/nanoclaw`.
 - Do not revert unrelated user changes in the worktree.
 - Update docs or skill guidance when behavior changes in a way future agents must understand.
 - If you modify runtime-facing tool descriptions or runtime skills, verify whether a rebuild/restart is needed for the change to take effect.
+- No qodo rules for this repo, don't try to load it.
