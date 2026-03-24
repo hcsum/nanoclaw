@@ -16,12 +16,14 @@
     "setup": "tsx setup/index.ts",
     "auth": "tsx src/whatsapp-auth.ts",
     "browser-use:login": "tsx src/browser-use-login.ts",
+    "web-cafe:login": "npx dotenv -e .env -- npx tsx .claude/skills/web-cafe/scripts/setup.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "mac:start": "launchctl load ~/Library/LaunchAgents/com.nanoclaw.plist",
     "mac:stop": "launchctl unload ~/Library/LaunchAgents/com.nanoclaw.plist",
     "mac:restart": "launchctl kickstart -k gui/$(id -u)/com.nanoclaw",
-    "log": "tail -f logs/nanoclaw.log"
+    "log": "tail -f logs/nanoclaw.log",
+    "log:container": "docker logs -f $(docker ps --format '{{.Names}}' | grep '^nanoclaw-' | head -n 1)"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.76",

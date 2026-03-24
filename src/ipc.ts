@@ -10,6 +10,7 @@ import { isValidGroupFolder } from './group-folder.js';
 import { logger } from './logger.js';
 import { RegisteredGroup } from './types.js';
 import { handleBrowserUseIpc } from './browser-use.js';
+import { handleWebCafeIpc } from './web-cafe.js';
 import { handleXIpc } from './x-integration.js';
 
 export interface IpcDeps {
@@ -470,6 +471,15 @@ export async function processTaskIpc(
         DATA_DIR,
       );
       if (handledByBrowserUse) {
+        break;
+      }
+      const handledByWebCafe = await handleWebCafeIpc(
+        data,
+        sourceGroup,
+        isMain,
+        DATA_DIR,
+      );
+      if (handledByWebCafe) {
         break;
       }
       const handledByX = await handleXIpc(data, sourceGroup, isMain, DATA_DIR);
