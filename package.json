@@ -23,7 +23,8 @@
     "mac:stop": "launchctl unload ~/Library/LaunchAgents/com.nanoclaw.plist",
     "mac:restart": "launchctl kickstart -k gui/$(id -u)/com.nanoclaw",
     "log": "tail -f logs/nanoclaw.log",
-    "log:container": "docker logs -f $(docker ps --format '{{.Names}}' | grep '^nanoclaw-' | head -n 1)"
+    "log:container": "docker logs -f $(docker ps --format '{{.Names}}' | grep '^nanoclaw-' | head -n 1)",
+    "refresh-mcp": "bash .claude/skills/refresh-mcp-tools/refresh.sh"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.76",

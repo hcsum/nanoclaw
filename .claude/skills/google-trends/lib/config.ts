@@ -31,7 +31,7 @@ export const config = {
   chromePath:
     process.env.CHROME_PATH ||
     '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-  baseUrl: 'https://trends.google.com/trends/explore',
+  baseUrl: 'https://trends.google.com/explore',
   browserDataDir: path.join(
     PROJECT_ROOT,
     'data',

@@ -24,7 +24,7 @@ describe('Google Trends helpers', () => {
         geo: 'US',
       }),
     ).toBe(
-      'https://trends.google.com/trends/explore?q=ai+girlfriend%2Cai+roleplay&date=today+12-m&geo=US',
+      'https://trends.google.com/explore?q=ai%2520girlfriend%2Cai%2520roleplay&date=today+12-m&geo=US',
     );
   });
 

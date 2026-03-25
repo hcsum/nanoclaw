@@ -155,7 +155,10 @@ export function buildExploreUrl(input: {
   date?: string;
 }): string {
   const url = new URL(config.baseUrl);
-  url.searchParams.set('q', input.keywords.join(','));
+  url.searchParams.set(
+    'q',
+    input.keywords.map((keyword) => encodeURIComponent(keyword)).join(','),
+  );
   url.searchParams.set('date', input.date || config.defaults.date);
   url.searchParams.set('geo', input.geo || config.defaults.geo);
   return url.toString();
