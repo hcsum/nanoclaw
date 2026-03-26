@@ -1,4 +1,4 @@
-import path from 'path';
+import * as path from 'path';
 
 const PROJECT_ROOT = process.env.NANOCLAW_ROOT || process.cwd();
 
@@ -46,11 +46,11 @@ export const config = {
     date: 'today 5-y',
   },
   timeouts: {
-    navigation: 30000,
-    pageLoad: 2500,
-    elementWait: 6000,
-    afterClick: 1200,
-    contentPoll: 2000,
+    navigation: 45000,
+    pageLoad: 4000,
+    elementWait: 10000,
+    afterClick: 2000,
+    contentPoll: 3000,
   },
   limits: {
     minKeywords: 1,

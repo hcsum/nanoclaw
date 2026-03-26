@@ -1,6 +1,6 @@
 import { chromium, BrowserContext, Locator, Page } from 'playwright';
-import fs from 'fs';
-import path from 'path';
+import * as fs from 'fs';
+import * as path from 'path';
 
 import { config } from './config.js';
 
@@ -380,6 +380,21 @@ function parseQueryRows(lines: string[], keyword: string): TrendQueryRow[] {
   return uniqueRows;
 }
 
+function deduplicateQueryRows(rows: TrendQueryRow[]): TrendQueryRow[] {
+  const seen = new Set<string>();
+  const uniqueRows: TrendQueryRow[] = [];
+
+  for (const row of rows) {
+    const key = `${row.query.toLowerCase()}|${row.change.toLowerCase()}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      uniqueRows.push(row);
+    }
+  }
+
+  return uniqueRows;
+}
+
 export function parseQueriesFromLines(
   lines: string[],
   keyword: string,
@@ -481,6 +496,63 @@ async function waitForKeywordQueries(
   }
 }
 
+async function navigateToQueryPage(
+  page: Page,
+  queryType: 'top' | 'rising',
+  pageNumber: number,
+): Promise<boolean> {
+  try {
+    // Wait for pagination controls to be visible
+    await page.waitForTimeout(config.timeouts.afterClick);
+
+    // Look for pagination buttons - Google Trends often has numbered buttons
+    const paginationSelectors = [
+      `button[aria-label*="Page ${pageNumber}" i]`,
+      `button:has-text("${pageNumber}")`,
+      `[role="button"]:has-text("${pageNumber}")`,
+      `button[aria-label*="${queryType}" i][aria-label*="page ${pageNumber}" i]`,
+    ];
+
+    for (const selector of paginationSelectors) {
+      const locator = page.locator(selector).first();
+      if (await locator.isVisible().catch(() => false)) {
+        await locator.scrollIntoViewIfNeeded().catch(() => undefined);
+        await locator.click().catch(() => undefined);
+        await page.waitForTimeout(config.timeouts.afterClick * 2); // Longer wait for page load
+        return true;
+      }
+    }
+
+    // Try alternative approach: look for "Next" button if we need page 2
+    if (pageNumber === 2) {
+      const nextSelectors = [
+        `button[aria-label*="Next" i]`,
+        `button:has-text("Next")`,
+        `[role="button"]:has-text("Next")`,
+        `button[aria-label*="${queryType}" i][aria-label*="next" i]`,
+      ];
+
+      for (const selector of nextSelectors) {
+        const locator = page.locator(selector).first();
+        if (await locator.isVisible().catch(() => false)) {
+          await locator.scrollIntoViewIfNeeded().catch(() => undefined);
+          await locator.click().catch(() => undefined);
+          await page.waitForTimeout(config.timeouts.afterClick * 2);
+          return true;
+        }
+      }
+    }
+  } catch (error) {
+    // Silently fail - pagination might not be available
+    console.error(
+      `Error navigating to ${queryType} page ${pageNumber}:`,
+      error,
+    );
+  }
+
+  return false;
+}
+
 export async function extractAverageInterest(
   page: Page,
   keywords: string[],
@@ -496,8 +568,63 @@ export async function extractTopQueriesForKeyword(
   await clickKeywordChip(page, keyword);
   await waitForKeywordQueries(page, keyword);
   await page.waitForTimeout(config.timeouts.afterClick);
+
+  // Get queries from first page
   const lines = await collectSectionLines(page, QUERY_HEADING_PATTERNS);
-  return parseQueriesFromLines(lines, keyword);
+  const firstPageResult = parseQueriesFromLines(lines, keyword);
+
+  // Try to navigate to page 2 for Top queries
+  console.log(
+    `Attempting to navigate to Top queries page 2 for keyword: ${keyword}`,
+  );
+  const topQueriesPage2 = await navigateToQueryPage(page, 'top', 2);
+  if (topQueriesPage2) {
+    console.log(`Successfully navigated to Top queries page 2`);
+    await page.waitForTimeout(config.timeouts.afterClick * 3); // Longer wait for page load
+    const page2Lines = await collectSectionLines(page, QUERY_HEADING_PATTERNS);
+    const page2Result = parseQueriesFromLines(page2Lines, keyword);
+    firstPageResult.topQueries.push(...page2Result.topQueries);
+    console.log(
+      `Added ${page2Result.topQueries.length} additional top queries from page 2`,
+    );
+    // Navigate back to first page for Rising queries
+    console.log(`Navigating back to Top queries page 1`);
+    await navigateToQueryPage(page, 'top', 1);
+    await page.waitForTimeout(config.timeouts.afterClick);
+  } else {
+    console.log(`No pagination found for Top queries, using only page 1`);
+  }
+
+  // Try to navigate to page 2 for Rising queries
+  console.log(
+    `Attempting to navigate to Rising queries page 2 for keyword: ${keyword}`,
+  );
+  const risingQueriesPage2 = await navigateToQueryPage(page, 'rising', 2);
+  if (risingQueriesPage2) {
+    console.log(`Successfully navigated to Rising queries page 2`);
+    await page.waitForTimeout(config.timeouts.afterClick * 3); // Longer wait for page load
+    const page2Lines = await collectSectionLines(page, QUERY_HEADING_PATTERNS);
+    const page2Result = parseQueriesFromLines(page2Lines, keyword);
+    firstPageResult.risingQueries.push(...page2Result.risingQueries);
+    console.log(
+      `Added ${page2Result.risingQueries.length} additional rising queries from page 2`,
+    );
+  } else {
+    console.log(`No pagination found for Rising queries, using only page 1`);
+  }
+
+  // Limit to max queries and deduplicate
+  firstPageResult.topQueries = deduplicateQueryRows(
+    firstPageResult.topQueries,
+  ).slice(0, config.limits.maxTopQueries);
+  firstPageResult.risingQueries = deduplicateQueryRows(
+    firstPageResult.risingQueries,
+  ).slice(0, config.limits.maxTopQueries);
+
+  console.log(
+    `Final results: ${firstPageResult.topQueries.length} top queries, ${firstPageResult.risingQueries.length} rising queries`,
+  );
+  return firstPageResult;
 }
 
 export function formatTrendComparisonMessage(
