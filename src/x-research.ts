@@ -13,9 +13,6 @@ interface SkillResult {
 interface XIpcData {
   type?: string;
   requestId?: string;
-  content?: string;
-  tweetUrl?: string;
-  comment?: string;
   limit?: number;
   query?: string;
 }
@@ -37,21 +34,14 @@ function writeResult(
 }
 
 async function runScript(
-  scriptName:
-    | 'post'
-    | 'like'
-    | 'reply'
-    | 'retweet'
-    | 'quote'
-    | 'read-home'
-    | 'search',
+  scriptName: 'read-home' | 'search',
   args: Record<string, unknown>,
 ): Promise<SkillResult> {
   const scriptPath = path.join(
     process.cwd(),
     '.claude',
     'skills',
-    'x-integration',
+    'x-research',
     'scripts',
     `${scriptName}.ts`,
   );
@@ -59,7 +49,7 @@ async function runScript(
   if (!fs.existsSync(scriptPath)) {
     return {
       success: false,
-      message: `X script not found: ${scriptPath}`,
+      message: `X research script not found: ${scriptPath}`,
     };
   }
 
@@ -86,7 +76,7 @@ async function runScript(
       proc.kill('SIGTERM');
       resolve({
         success: false,
-        message: `X script timed out after ${SCRIPT_TIMEOUT_MS / 1000}s`,
+        message: `X research script timed out after ${SCRIPT_TIMEOUT_MS / 1000}s`,
       });
     }, SCRIPT_TIMEOUT_MS);
 
@@ -97,12 +87,13 @@ async function runScript(
           success: false,
           message:
             stderr.trim() ||
-            `X script exited with code ${String(code)}${
+            `X research script exited with code ${String(code)}${
               stdout.trim() ? `: ${stdout.trim().slice(0, 200)}` : ''
             }`,
         });
         return;
       }
+
       try {
         const lines = stdout
           .split('\n')
@@ -112,7 +103,7 @@ async function runScript(
         if (!lastLine) {
           resolve({
             success: false,
-            message: 'X script produced empty output',
+            message: 'X research script produced empty output',
           });
           return;
         }
@@ -120,7 +111,7 @@ async function runScript(
       } catch {
         resolve({
           success: false,
-          message: `Failed to parse X script output: ${stdout.trim().slice(0, 200)}`,
+          message: `Failed to parse X research script output: ${stdout.trim().slice(0, 200)}`,
         });
       }
     });
@@ -129,17 +120,13 @@ async function runScript(
       clearTimeout(timer);
       resolve({
         success: false,
-        message: `Failed to start X script: ${err.message}`,
+        message: `Failed to start X research script: ${err.message}`,
       });
     });
   });
 }
 
-/**
- * Handle x_* IPC tasks.
- * Returns true when the task type belongs to X integration.
- */
-export async function handleXIpc(
+export async function handleXResearchIpc(
   data: XIpcData,
   sourceGroup: string,
   isMain: boolean,
@@ -150,14 +137,14 @@ export async function handleXIpc(
 
   const requestId = data.requestId;
   if (!requestId) {
-    logger.warn({ type, sourceGroup }, 'X IPC task missing requestId');
+    logger.warn({ type, sourceGroup }, 'X research IPC task missing requestId');
     return true;
   }
 
   if (!isMain) {
     writeResult(dataDir, sourceGroup, requestId, {
       success: false,
-      message: 'Only the main group can use X integration tools.',
+      message: 'Only the main group can use X research tools.',
     });
     return true;
   }
@@ -165,47 +152,6 @@ export async function handleXIpc(
   let result: SkillResult;
 
   switch (type) {
-    case 'x_post':
-      if (!data.content) {
-        result = { success: false, message: 'Missing content' };
-        break;
-      }
-      result = await runScript('post', { content: data.content });
-      break;
-    case 'x_like':
-      if (!data.tweetUrl) {
-        result = { success: false, message: 'Missing tweetUrl' };
-        break;
-      }
-      result = await runScript('like', { tweetUrl: data.tweetUrl });
-      break;
-    case 'x_reply':
-      if (!data.tweetUrl || !data.content) {
-        result = { success: false, message: 'Missing tweetUrl or content' };
-        break;
-      }
-      result = await runScript('reply', {
-        tweetUrl: data.tweetUrl,
-        content: data.content,
-      });
-      break;
-    case 'x_retweet':
-      if (!data.tweetUrl) {
-        result = { success: false, message: 'Missing tweetUrl' };
-        break;
-      }
-      result = await runScript('retweet', { tweetUrl: data.tweetUrl });
-      break;
-    case 'x_quote':
-      if (!data.tweetUrl || !data.comment) {
-        result = { success: false, message: 'Missing tweetUrl or comment' };
-        break;
-      }
-      result = await runScript('quote', {
-        tweetUrl: data.tweetUrl,
-        comment: data.comment,
-      });
-      break;
     case 'x_read_home_feed':
       result = await runScript('read-home', {
         limit: Number.isFinite(data.limit) ? data.limit : 25,
@@ -222,18 +168,20 @@ export async function handleXIpc(
       });
       break;
     default:
-      result = { success: false, message: `Unknown X task type: ${type}` };
-      break;
+      return false;
   }
 
   writeResult(dataDir, sourceGroup, requestId, result);
 
   if (result.success) {
-    logger.info({ type, sourceGroup, requestId }, 'X IPC task completed');
+    logger.info(
+      { type, sourceGroup, requestId },
+      'X research IPC task completed',
+    );
   } else {
     logger.warn(
       { type, sourceGroup, requestId, message: result.message },
-      'X IPC task failed',
+      'X research IPC task failed',
     );
   }
 
