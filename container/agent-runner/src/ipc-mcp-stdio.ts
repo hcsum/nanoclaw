@@ -18,11 +18,13 @@ const X_RESULTS_DIR = path.join(IPC_DIR, 'x_results');
 const BROWSER_USE_RESULTS_DIR = path.join(IPC_DIR, 'browser_use_results');
 const WEB_CAFE_RESULTS_DIR = path.join(IPC_DIR, 'web_cafe_results');
 const GOOGLE_TRENDS_RESULTS_DIR = path.join(IPC_DIR, 'google_trends_results');
+const WEB_ACCESS_RESULTS_DIR = path.join(IPC_DIR, 'web_access_results');
 const X_RESULT_POLL_MS = 1000;
 const X_RESULT_TIMEOUT_MS = 130000;
 const BROWSER_USE_RESULT_TIMEOUT_MS = 30 * 1000;
 const WEB_CAFE_RESULT_TIMEOUT_MS = 190000;
 const GOOGLE_TRENDS_RESULT_TIMEOUT_MS = 190000;
+const WEB_ACCESS_RESULT_TIMEOUT_MS = 190000;
 
 // Context from environment variables (set by the agent runner)
 const chatJid = process.env.NANOCLAW_CHAT_JID!;
@@ -73,6 +75,17 @@ async function waitForGoogleTrendsResult(
     path.join(GOOGLE_TRENDS_RESULTS_DIR, `${requestId}.json`),
     timeoutMs,
     'Google Trends result',
+  );
+}
+
+async function waitForWebAccessResult(
+  requestId: string,
+  timeoutMs = WEB_ACCESS_RESULT_TIMEOUT_MS,
+): Promise<{ success: boolean; message: string; data?: unknown }> {
+  return waitForJsonResult(
+    path.join(WEB_ACCESS_RESULTS_DIR, `${requestId}.json`),
+    timeoutMs,
+    'Web Access result',
   );
 }
 
@@ -265,6 +278,64 @@ server.tool(
       'browser-use cancel result',
     );
 
+    const responseText =
+      result.data != null
+        ? `${result.message}\n\n${JSON.stringify(result.data, null, 2)}`
+        : result.message;
+
+    return {
+      content: [{ type: 'text' as const, text: responseText }],
+      isError: !result.success,
+    };
+  },
+);
+
+server.tool(
+  'web_access_call',
+  'Call the Web Access CDP Proxy API to control a real browser. Use this for tasks that require a browser with login state, dynamic content, or interactive operations. Main group only.',
+  {
+    method: z
+      .enum(['GET', 'POST'])
+      .describe('HTTP method to use (GET or POST)'),
+    endpoint: z
+      .string()
+      .min(1)
+      .describe('API endpoint (e.g., "/targets", "/new", "/eval", "/click")'),
+    query: z
+      .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
+      .optional()
+      .describe('Optional query parameters as an object'),
+    body: z
+      .string()
+      .optional()
+      .describe('Optional request body for POST requests'),
+  },
+  async (args) => {
+    if (!isMain) {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: 'Only the main group can use Web Access tools.',
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    const requestId = `webaccess-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    writeIpcFile(TASKS_DIR, {
+      type: 'web_access_call',
+      requestId,
+      method: args.method,
+      endpoint: args.endpoint,
+      query: args.query,
+      body: args.body,
+      groupFolder,
+      timestamp: new Date().toISOString(),
+    });
+
+    const result = await waitForWebAccessResult(requestId);
     const responseText =
       result.data != null
         ? `${result.message}\n\n${JSON.stringify(result.data, null, 2)}`

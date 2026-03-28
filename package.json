@@ -24,7 +24,8 @@
     "mac:restart": "launchctl kickstart -k gui/$(id -u)/com.nanoclaw",
     "log": "tail -f logs/nanoclaw.log",
     "log:container": "docker logs -f $(docker ps --format '{{.Names}}' | grep '^nanoclaw-' | head -n 1)",
-    "refresh-mcp": "bash .claude/skills/refresh-mcp-tools/refresh.sh"
+    "refresh-mcp": "bash .claude/skills/refresh-mcp-tools/refresh.sh",
+    "session:telegram-main": "sqlite3 store/messages.db \"SELECT session_id FROM sessions WHERE group_folder = 'telegram_main';\""
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.76",

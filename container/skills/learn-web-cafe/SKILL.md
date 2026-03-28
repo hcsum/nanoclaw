@@ -82,6 +82,11 @@ Write findings into the workspace research notes at `/workspace/group/research/w
 When adding a new entry or appending a section:
 
 - always include the current date and time
+- write enough detail that someone can understand the research later without reopening the source pages
+- include: the user question or goal, the search terms used, key findings, supporting evidence, concrete source URLs, and recommended next steps
+- capture specific facts and examples from sources instead of only high-level summaries
+- note uncertainty, conflicting signals, or weak evidence when present
+- prefer structured sections and bullets over a short paragraph
 - keep each notes file around 1000 lines and do not let it grow much beyond that
 - when the current file is full, start a new file in the same folder using sequential names like `webcafe-note-1.md`, `webcafe-note-2.md`, and so on
 

@@ -12,6 +12,7 @@ import { logger } from './logger.js';
 import { RegisteredGroup } from './types.js';
 import { handleBrowserUseIpc } from './browser-use.js';
 import { handleWebCafeIpc } from './web-cafe.js';
+import { handleWebAccessIpc } from './web-access.js';
 import { handleXIpc } from './x-integration.js';
 
 export interface IpcDeps {
@@ -481,6 +482,15 @@ export async function processTaskIpc(
         DATA_DIR,
       );
       if (handledByWebCafe) {
+        break;
+      }
+      const handledByWebAccess = await handleWebAccessIpc(
+        data,
+        sourceGroup,
+        isMain,
+        DATA_DIR,
+      );
+      if (handledByWebAccess) {
         break;
       }
       const handledByGoogleTrends = await handleGoogleTrendsIpc(
