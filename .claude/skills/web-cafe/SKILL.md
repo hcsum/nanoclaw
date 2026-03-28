@@ -42,7 +42,7 @@ Use this skill when you need to:
 ## Why this exists
 
 - Web.Cafe may require login or richer client-side navigation for search and deep exploration.
-- The host must use a real headed browser and persistent profile so sessions survive.
+- The host must use the user's real headed Chrome session so existing login state carries over.
 - Runtime agents need dedicated tool guidance that is separate from coding-agent implementation instructions.
 
 ## Implementation checklist
@@ -61,10 +61,9 @@ Use this skill when you need to:
 npm ls playwright dotenv-cli || npm install playwright dotenv-cli
 ```
 
-2. Set `CHROME_PATH` in `.env` if needed.
-   - This skill always reuses the shared proxy env vars when they are set.
+2. Enable Chrome remote debugging and make sure your normal Chrome is logged into Web.Cafe.
 
-3. Run login setup:
+3. Run the connection/login check:
 
 ```bash
 npx dotenv -e .env -- npx tsx .claude/skills/web-cafe/scripts/setup.ts
@@ -78,11 +77,6 @@ npm run build
 launchctl kickstart -k gui/$(id -u)/com.nanoclaw
 ```
 
-## Runtime data paths
-
-- `data/web-cafe-browser-profile/` - persistent Chrome profile
-- `data/web-cafe-auth.json` - auth marker
-
 ## Notes for coding agents
 
 - Do not treat this file as Andy's runtime prompt. That belongs in `container/skills/learn-web-cafe/SKILL.md`.
@@ -95,5 +89,5 @@ launchctl kickstart -k gui/$(id -u)/com.nanoclaw
 ## Notes
 
 - This integration is main-group only.
-- It uses the host's real Chrome in headed mode.
-- If login expires, rerun the setup script.
+- It uses the host's current Chrome session in headed mode.
+- If login expires, sign back in inside your normal Chrome and rerun the setup script.

@@ -7,15 +7,16 @@ import {
   extractKeywordsFromExploreUrl,
   extractTopQueriesForKeyword,
   formatTrendComparisonMessage,
-  getBrowserContext,
+  getBrowserSession,
   normalizeKeywords,
   openExplorePage,
   runScript,
+  closeBrowserSession,
   type ScriptResult,
+  type BrowserSession,
   type TrendKeywordResult,
   waitForTrendsContent,
 } from '../lib/browser.js';
-import type { BrowserContext } from 'playwright';
 
 interface CompareInput {
   keywords?: string[];
@@ -46,10 +47,10 @@ async function compareTrends(input: CompareInput): Promise<ScriptResult> {
   const url =
     input.explore_url?.trim() || buildExploreUrl({ keywords, geo, date });
 
-  let context: BrowserContext | null = null;
+  let session: BrowserSession | null = null;
   try {
-    context = await getBrowserContext();
-    const page = await openExplorePage(context, url);
+    session = await getBrowserSession();
+    const page = await openExplorePage(session, url);
     await waitForTrendsContent(page);
 
     const averageInterestMap = await extractAverageInterest(page, keywords);
@@ -77,9 +78,7 @@ async function compareTrends(input: CompareInput): Promise<ScriptResult> {
       data: resultData,
     };
   } finally {
-    if (context) {
-      await context.close();
-    }
+    await closeBrowserSession(session);
   }
 }
 

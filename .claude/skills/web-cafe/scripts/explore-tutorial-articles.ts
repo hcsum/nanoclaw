@@ -4,15 +4,15 @@ import {
   type ScriptResult,
   buildResearchReport,
   clampPageLimit,
+  closeBrowserSession,
   collectCandidateLinks,
   ensureLikelyLoggedIn,
-  getBrowserContext,
+  getBrowserSession,
   openPage,
   runScript,
+  type BrowserSession,
   visitRepresentativePages,
 } from '../lib/browser.js';
-
-import type { BrowserContext } from 'playwright';
 
 interface ExploreTutorialArticlesInput {
   goal?: string;
@@ -23,18 +23,18 @@ async function exploreTutorialArticles(
   input: ExploreTutorialArticlesInput,
 ): Promise<ScriptResult> {
   const maxPages = clampPageLimit(input.max_pages, 5);
-  let context: BrowserContext | null = null;
+  let session: BrowserSession | null = null;
 
   try {
-    context = await getBrowserContext();
+    session = await getBrowserSession();
     const page = await openPage(
-      context,
+      session,
       'https://new.web.cafe/tutorials?status=article',
     );
     await ensureLikelyLoggedIn(page);
 
     const links = await collectCandidateLinks(page, 32);
-    const pages = await visitRepresentativePages(context, links, maxPages);
+    const pages = await visitRepresentativePages(session, links, maxPages);
 
     return buildResearchReport({
       title: 'Web.Cafe Tutorial Articles Exploration',
@@ -51,7 +51,7 @@ async function exploreTutorialArticles(
       ],
     });
   } finally {
-    if (context) await context.close();
+    await closeBrowserSession(session);
   }
 }
 

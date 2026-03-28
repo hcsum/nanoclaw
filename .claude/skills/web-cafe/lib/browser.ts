@@ -1,6 +1,9 @@
-import { chromium, BrowserContext, Page } from 'playwright';
+import { spawn } from 'child_process';
+import { chromium, Browser, BrowserContext, Page } from 'playwright';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
+import net from 'net';
 
 import { config } from './config.js';
 
@@ -42,6 +45,12 @@ export interface HomepageSection {
 export interface HomepageSnapshot {
   title: string;
   sections: HomepageSection[];
+}
+
+export interface BrowserSession {
+  browser: Browser;
+  context: BrowserContext;
+  pages: Set<Page>;
 }
 
 const IGNORED_WEB_CAFE_PATHS = new Set([
@@ -96,47 +105,216 @@ export function writeResult(result: ScriptResult): void {
   console.log(JSON.stringify(result));
 }
 
-export function cleanupLockFiles(): void {
-  for (const lockFile of [
-    'SingletonLock',
-    'SingletonSocket',
-    'SingletonCookie',
-  ]) {
-    const lockPath = path.join(config.browserDataDir, lockFile);
-    if (fs.existsSync(lockPath)) {
-      try {
-        fs.unlinkSync(lockPath);
-      } catch {
-        // ignore
-      }
-    }
-  }
-}
+function checkPort(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const socket = net.createConnection(port, '127.0.0.1');
+    const timer = setTimeout(() => {
+      socket.destroy();
+      resolve(false);
+    }, 2000);
 
-export async function getBrowserContext(): Promise<BrowserContext> {
-  if (!fs.existsSync(config.authPath)) {
-    throw new Error(
-      'Web.Cafe authentication not configured. Run npx dotenv -e .env -- npx tsx .claude/skills/web-cafe/scripts/setup.ts first.',
-    );
-  }
-
-  cleanupLockFiles();
-
-  return chromium.launchPersistentContext(config.browserDataDir, {
-    executablePath: config.chromePath,
-    headless: false,
-    viewport: config.viewport,
-    args: config.chromeArgs,
-    ignoreDefaultArgs: config.chromeIgnoreDefaultArgs,
-    proxy: config.browserProxy,
+    socket.once('connect', () => {
+      clearTimeout(timer);
+      socket.destroy();
+      resolve(true);
+    });
+    socket.once('error', () => {
+      clearTimeout(timer);
+      resolve(false);
+    });
   });
 }
 
+function activePortFiles(): string[] {
+  const home = os.homedir();
+  const localAppData = process.env.LOCALAPPDATA || '';
+
+  switch (process.platform) {
+    case 'darwin':
+      return [
+        path.join(
+          home,
+          'Library/Application Support/Google/Chrome/DevToolsActivePort',
+        ),
+        path.join(
+          home,
+          'Library/Application Support/Google/Chrome Canary/DevToolsActivePort',
+        ),
+        path.join(
+          home,
+          'Library/Application Support/Chromium/DevToolsActivePort',
+        ),
+      ];
+    case 'linux':
+      return [
+        path.join(home, '.config/google-chrome/DevToolsActivePort'),
+        path.join(home, '.config/chromium/DevToolsActivePort'),
+      ];
+    case 'win32':
+      return [
+        path.join(localAppData, 'Google/Chrome/User Data/DevToolsActivePort'),
+        path.join(localAppData, 'Chromium/User Data/DevToolsActivePort'),
+      ];
+    default:
+      return [];
+  }
+}
+
+async function discoverChromePort(): Promise<number | null> {
+  for (const filePath of activePortFiles()) {
+    try {
+      const lines = fs.readFileSync(filePath, 'utf8').trim().split(/\r?\n/);
+      const port = Number.parseInt(lines[0] || '', 10);
+      if (port > 0 && port < 65536 && (await checkPort(port))) {
+        return port;
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  for (const port of [9222, 9229, 9333]) {
+    if (await checkPort(port)) return port;
+  }
+
+  return null;
+}
+
+function formatCommandFailure(output: string, fallback: string): string {
+  const text = output.trim();
+  if (!text) return fallback;
+  const lines = text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+  return lines.slice(-6).join('\n');
+}
+
+async function ensureCurrentChromeReady(): Promise<void> {
+  if (!fs.existsSync(config.webAccessCheckScript)) {
+    throw new Error(
+      `Web Access setup script not found: ${config.webAccessCheckScript}`,
+    );
+  }
+
+  await new Promise<void>((resolve, reject) => {
+    const proc = spawn('bash', [config.webAccessCheckScript], {
+      cwd: config.projectRoot,
+      env: { ...process.env, NANOCLAW_ROOT: config.projectRoot },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+
+    let stdout = '';
+    let stderr = '';
+    proc.stdout.on('data', (chunk) => {
+      stdout += chunk.toString();
+    });
+    proc.stderr.on('data', (chunk) => {
+      stderr += chunk.toString();
+    });
+
+    const timer = setTimeout(() => {
+      proc.kill('SIGTERM');
+      reject(
+        new Error(
+          `Web Access setup timed out after ${Math.round(config.timeouts.setup / 1000)}s`,
+        ),
+      );
+    }, config.timeouts.setup);
+
+    proc.on('close', (code) => {
+      clearTimeout(timer);
+      if (code === 0) {
+        resolve();
+        return;
+      }
+
+      reject(
+        new Error(
+          formatCommandFailure(
+            `${stderr}\n${stdout}`,
+            `Web Access setup failed with code ${String(code)}`,
+          ),
+        ),
+      );
+    });
+
+    proc.on('error', (err) => {
+      clearTimeout(timer);
+      reject(new Error(`Failed to start Web Access setup: ${err.message}`));
+    });
+  });
+}
+
+async function discoverWebSocketEndpoint(): Promise<string> {
+  const port = await discoverChromePort();
+  if (!port) {
+    throw new Error('Could not find the current Chrome remote debugging port.');
+  }
+
+  const response = await fetch(
+    `${config.chromeDebugBaseUrl}:${String(port)}/json/version`,
+  );
+  if (!response.ok) {
+    throw new Error(
+      `Failed to read Chrome debug metadata: HTTP ${String(response.status)}`,
+    );
+  }
+
+  const payload = (await response.json()) as {
+    webSocketDebuggerUrl?: string;
+  };
+  if (!payload.webSocketDebuggerUrl) {
+    throw new Error('Chrome did not expose a webSocketDebuggerUrl.');
+  }
+
+  return payload.webSocketDebuggerUrl;
+}
+
+export async function getBrowserSession(): Promise<BrowserSession> {
+  await ensureCurrentChromeReady();
+
+  const browser = await chromium.connectOverCDP(
+    await discoverWebSocketEndpoint(),
+  );
+  const context = browser.contexts()[0];
+  if (!context) {
+    await browser.close().catch(() => undefined);
+    throw new Error(
+      'Connected to Chrome but could not access its default context.',
+    );
+  }
+
+  return {
+    browser,
+    context,
+    pages: new Set<Page>(),
+  };
+}
+
+export async function closeBrowserSession(
+  session: BrowserSession | null,
+): Promise<void> {
+  if (!session) return;
+
+  for (const page of session.pages) {
+    await page.close().catch(() => undefined);
+  }
+
+  await session.browser.close().catch(() => undefined);
+}
+
+export async function getBrowserContext(): Promise<BrowserContext> {
+  const session = await getBrowserSession();
+  return session.context;
+}
+
 export async function openPage(
-  context: BrowserContext,
+  session: BrowserSession,
   url: string,
 ): Promise<Page> {
-  const page = context.pages()[0] || (await context.newPage());
+  const page = await session.context.newPage();
+  session.pages.add(page);
   await page.goto(url, {
     timeout: config.timeouts.navigation,
     waitUntil: 'domcontentloaded',
@@ -707,7 +885,7 @@ export async function extractPageInsight(page: Page): Promise<PageInsight> {
 }
 
 export async function visitRepresentativePages(
-  context: BrowserContext,
+  session: BrowserSession,
   links: CandidateLink[],
   maxPages: number,
 ): Promise<PageInsight[]> {
@@ -718,7 +896,7 @@ export async function visitRepresentativePages(
   );
 
   for (const url of uniqueUrls) {
-    const page = await openPage(context, url);
+    const page = await openPage(session, url);
     await page.waitForTimeout(900);
     insights.push(await extractPageInsight(page));
   }

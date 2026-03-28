@@ -4,17 +4,17 @@ import {
   type ScriptResult,
   buildResearchReport,
   clampPageLimit,
+  closeBrowserSession,
   collectCandidateLinks,
   ensureLikelyLoggedIn,
   extractPageInsight,
-  getBrowserContext,
+  getBrowserSession,
   normalizeWebCafeUrl,
   openPage,
   runScript,
+  type BrowserSession,
   visitRepresentativePages,
 } from '../lib/browser.js';
-
-import type { BrowserContext } from 'playwright';
 
 interface VisitPageInput {
   url: string;
@@ -28,18 +28,18 @@ async function visitPage(input: VisitPageInput): Promise<ScriptResult> {
   }
 
   const maxPages = clampPageLimit(input.max_pages, 3);
-  let context: BrowserContext | null = null;
+  let session: BrowserSession | null = null;
 
   try {
-    context = await getBrowserContext();
+    session = await getBrowserSession();
     const url = normalizeWebCafeUrl(input.url);
-    const page = await openPage(context, url);
+    const page = await openPage(session, url);
     await ensureLikelyLoggedIn(page);
 
     const current = await extractPageInsight(page);
     const links = await collectCandidateLinks(page, 16);
     const relatedPages = await visitRepresentativePages(
-      context,
+      session,
       links,
       maxPages,
     );
@@ -56,7 +56,7 @@ async function visitPage(input: VisitPageInput): Promise<ScriptResult> {
       sources: [url, ...relatedPages.map((item) => item.url)],
     });
   } finally {
-    if (context) await context.close();
+    await closeBrowserSession(session);
   }
 }
 

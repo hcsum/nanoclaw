@@ -1,38 +1,28 @@
 #!/usr/bin/env npx tsx
 
-import { chromium } from 'playwright';
 import * as readline from 'readline';
-import fs from 'fs';
-import path from 'path';
 
-import { config, cleanupLockFiles } from '../lib/browser.js';
+import {
+  closeBrowserSession,
+  config,
+  ensureLikelyLoggedIn,
+  getBrowserSession,
+  openPage,
+  type BrowserSession,
+} from '../lib/browser.js';
 
 async function setup(): Promise<void> {
-  console.log('=== Web.Cafe Authentication Setup ===\n');
-  console.log('This will open Chrome so you can log in to Web.Cafe.');
-  console.log('The session will be saved for future automated browsing.\n');
-  console.log(`Chrome path: ${config.chromePath}`);
-  console.log(`Profile dir: ${config.browserDataDir}\n`);
-
-  fs.mkdirSync(path.dirname(config.authPath), { recursive: true });
-  fs.mkdirSync(config.browserDataDir, { recursive: true });
-
-  cleanupLockFiles();
-
-  const context = await chromium.launchPersistentContext(
-    config.browserDataDir,
-    {
-      executablePath: config.chromePath,
-      headless: false,
-      viewport: config.viewport,
-      args: config.chromeArgs.slice(0, 3),
-      ignoreDefaultArgs: config.chromeIgnoreDefaultArgs,
-      proxy: config.browserProxy,
-    },
+  console.log('=== Web.Cafe Current-Chrome Check ===\n');
+  console.log(
+    'This opens a tab in your current Chrome so you can verify Web.Cafe login.',
+  );
+  console.log(
+    'The runtime tools now use your live Chrome session instead of a separate browser profile.\n',
   );
 
-  const page = context.pages()[0] || (await context.newPage());
-  await page.goto(config.baseUrl, { waitUntil: 'domcontentloaded' });
+  let session: BrowserSession | null = null;
+  session = await getBrowserSession();
+  const page = await openPage(session, config.baseUrl);
 
   console.log('Please complete login in the browser window.');
   console.log(
@@ -54,35 +44,17 @@ async function setup(): Promise<void> {
   await page.goto(config.baseUrl, { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(config.timeouts.pageLoad);
 
-  const stillShowsLogin = await page
-    .locator('text=/^登\s*录$/')
-    .first()
-    .isVisible()
-    .catch(() => false);
-
-  fs.writeFileSync(
-    config.authPath,
-    JSON.stringify(
-      {
-        authenticated: !stillShowsLogin,
-        timestamp: new Date().toISOString(),
-      },
-      null,
-      2,
-    ),
-  );
-
-  if (!stillShowsLogin) {
+  try {
+    await ensureLikelyLoggedIn(page);
     console.log('\nAuthenticated successfully.');
-    console.log(`Session saved to: ${config.browserDataDir}`);
-  } else {
+  } catch {
     console.log('\nLogin could not be verified automatically.');
     console.log(
-      'The auth marker was still saved; rerun setup if browsing later reports auth problems.',
+      'If the runtime later reports auth problems, log in to Web.Cafe in your normal Chrome and rerun this check.',
     );
   }
 
-  await context.close();
+  await closeBrowserSession(session);
 }
 
 setup().catch((err) => {

@@ -1,16 +1,18 @@
 #!/usr/bin/env npx tsx
 
-import { BrowserContext, Locator, Page } from 'playwright';
+import { Locator, Page } from 'playwright';
 
 import {
   type ScriptResult,
   buildResearchReport,
   clampPageLimit,
+  closeBrowserSession,
   collectCandidateLinks,
   ensureLikelyLoggedIn,
-  getBrowserContext,
+  getBrowserSession,
   openPage,
   runScript,
+  type BrowserSession,
   visitRepresentativePages,
 } from '../lib/browser.js';
 
@@ -69,13 +71,13 @@ async function findSearchInput(page: Page): Promise<Locator | null> {
 }
 
 async function searchViaUi(
-  context: BrowserContext,
+  session: BrowserSession,
   query: string,
 ): Promise<{
   page: Page;
   resultLinks: Awaited<ReturnType<typeof collectCandidateLinks>>;
 }> {
-  const page = await openPage(context, 'https://new.web.cafe/');
+  const page = await openPage(session, 'https://new.web.cafe/');
   await ensureLikelyLoggedIn(page);
 
   const input = await findSearchInput(page);
@@ -99,11 +101,11 @@ async function searchWebCafe(input: SearchInput): Promise<ScriptResult> {
 
   const query = input.query.trim().slice(0, 120);
   const maxPages = clampPageLimit(input.max_pages, 4);
-  let context: BrowserContext | null = null;
+  let session: BrowserSession | null = null;
 
   try {
-    context = await getBrowserContext();
-    const { resultLinks } = await searchViaUi(context, query);
+    session = await getBrowserSession();
+    const { resultLinks } = await searchViaUi(session, query);
 
     if (resultLinks.length === 0) {
       return {
@@ -113,7 +115,7 @@ async function searchWebCafe(input: SearchInput): Promise<ScriptResult> {
     }
 
     const pages = await visitRepresentativePages(
-      context,
+      session,
       resultLinks,
       maxPages,
     );
@@ -130,7 +132,7 @@ async function searchWebCafe(input: SearchInput): Promise<ScriptResult> {
       sources: pages.map((item) => item.url),
     });
   } finally {
-    if (context) await context.close();
+    await closeBrowserSession(session);
   }
 }
 

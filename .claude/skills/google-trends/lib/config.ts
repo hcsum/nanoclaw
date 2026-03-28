@@ -11,36 +11,19 @@ function firstDefined(
   return undefined;
 }
 
-const browserProxyServer = firstDefined(
-  process.env.HTTPS_PROXY,
-  process.env.https_proxy,
-  process.env.HTTP_PROXY,
-  process.env.http_proxy,
-  process.env.ALL_PROXY,
-  process.env.all_proxy,
-);
-
-const browserProxyBypass = firstDefined(
-  process.env.NO_PROXY,
-  process.env.no_proxy,
-);
-const browserProxyUsername = firstDefined(process.env.PROXY_USERNAME);
-const browserProxyPassword = firstDefined(process.env.PROXY_PASSWORD);
-
 export const config = {
-  chromePath:
-    process.env.CHROME_PATH ||
-    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
   baseUrl: 'https://trends.google.com/explore',
-  browserDataDir: path.join(
+  projectRoot: PROJECT_ROOT,
+  webAccessCheckScript: path.join(
     PROJECT_ROOT,
-    'data',
-    'google-trends-browser-profile',
+    '.claude',
+    'skills',
+    'web-access',
+    'scripts',
+    'check-deps.sh',
   ),
-  viewport: {
-    width: 1440,
-    height: 960,
-  },
+  chromeDebugBaseUrl:
+    firstDefined(process.env.CHROME_DEBUG_BASE_URL) || 'http://127.0.0.1',
   defaults: {
     geo: 'Worldwide',
     date: 'today 5-y',
@@ -51,6 +34,7 @@ export const config = {
     elementWait: 10000,
     afterClick: 2000,
     contentPoll: 3000,
+    setup: 130000,
   },
   limits: {
     minKeywords: 1,
@@ -58,21 +42,4 @@ export const config = {
     maxKeywordLength: 120,
     maxTopQueries: 25,
   },
-  chromeArgs: [
-    '--disable-blink-features=AutomationControlled',
-    '--no-sandbox',
-    '--disable-setuid-sandbox',
-    '--no-first-run',
-    '--no-default-browser-check',
-    '--disable-sync',
-  ],
-  chromeIgnoreDefaultArgs: ['--enable-automation'],
-  browserProxy: browserProxyServer
-    ? {
-        server: browserProxyServer,
-        bypass: browserProxyBypass,
-        username: browserProxyUsername,
-        password: browserProxyPassword,
-      }
-    : undefined,
 };

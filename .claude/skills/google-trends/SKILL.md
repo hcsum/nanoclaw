@@ -56,8 +56,8 @@ Use this skill when you need to:
 npm ls playwright dotenv-cli || npm install playwright dotenv-cli
 ```
 
-2. Set `CHROME_PATH` in `.env` if needed.
-   - This skill reuses the shared proxy env vars when they are set.
+2. Enable Chrome remote debugging in your normal Chrome.
+   - This skill now uses your current Chrome session through the same remote-debugging path as `web-access`.
 
 3. Build and restart NanoClaw:
 
@@ -66,10 +66,6 @@ npm run build
 ./container/build.sh
 launchctl kickstart -k gui/$(id -u)/com.nanoclaw
 ```
-
-## Runtime data paths
-
-- `data/google-trends-browser-profile/` - persistent Chrome profile for consent/session reuse
 
 ## Notes for coding agents
 
@@ -83,5 +79,5 @@ launchctl kickstart -k gui/$(id -u)/com.nanoclaw
 ## Notes
 
 - This integration is main-group only.
-- It uses the host's real Chrome in headed mode.
+- It uses the host's current Chrome session in headed mode.
 - Google may occasionally show consent or anti-bot interstitials, so keep selectors defensive.

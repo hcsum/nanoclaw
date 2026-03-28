@@ -4,15 +4,15 @@ import {
   type ScriptResult,
   buildResearchReport,
   clampPageLimit,
+  closeBrowserSession,
   collectCandidateLinks,
   ensureLikelyLoggedIn,
-  getBrowserContext,
+  getBrowserSession,
   openPage,
   runScript,
+  type BrowserSession,
   visitRepresentativePages,
 } from '../lib/browser.js';
-
-import type { BrowserContext } from 'playwright';
 
 interface ExploreExperiencesInput {
   goal?: string;
@@ -23,15 +23,15 @@ async function exploreExperiences(
   input: ExploreExperiencesInput,
 ): Promise<ScriptResult> {
   const maxPages = clampPageLimit(input.max_pages, 5);
-  let context: BrowserContext | null = null;
+  let session: BrowserSession | null = null;
 
   try {
-    context = await getBrowserContext();
-    const page = await openPage(context, 'https://new.web.cafe/experiences');
+    session = await getBrowserSession();
+    const page = await openPage(session, 'https://new.web.cafe/experiences');
     await ensureLikelyLoggedIn(page);
 
     const links = await collectCandidateLinks(page, 28);
-    const pages = await visitRepresentativePages(context, links, maxPages);
+    const pages = await visitRepresentativePages(session, links, maxPages);
 
     return buildResearchReport({
       title: 'Web.Cafe Experiences Exploration',
@@ -48,7 +48,7 @@ async function exploreExperiences(
       ],
     });
   } finally {
-    if (context) await context.close();
+    await closeBrowserSession(session);
   }
 }
 
