@@ -63,7 +63,6 @@ A personal Claude assistant with multi-channel support, persistent memory per co
 │  │    • Bash (safe - sandboxed in container!)                     │    │
 │  │    • Read, Write, Edit, Glob, Grep (file operations)           │    │
 │  │    • WebSearch, WebFetch (internet access)                     │    │
-│  │    • agent-browser (browser automation)                        │    │
 │  │    • mcp__nanoclaw__* (scheduler tools via IPC)                │    │
 │  │                                                                │    │
 │  └──────────────────────────────────────────────────────────────┘    │
@@ -73,14 +72,14 @@ A personal Claude assistant with multi-channel support, persistent memory per co
 
 ### Technology Stack
 
-| Component          | Technology                                    | Purpose                                   |
-| ------------------ | --------------------------------------------- | ----------------------------------------- |
-| Channel System     | Channel registry (`src/channels/registry.ts`) | Channels self-register at startup         |
-| Message Storage    | SQLite (better-sqlite3)                       | Store messages for polling                |
-| Container Runtime  | Containers (Linux VMs)                        | Isolated environments for agent execution |
-| Agent              | @anthropic-ai/claude-agent-sdk (0.2.29)       | Run Claude with tools and MCP servers     |
-| Browser Automation | agent-browser via host proxy                  | Web interaction and screenshots           |
-| Runtime            | Node.js 20+                                   | Host process for routing and scheduling   |
+| Component         | Technology                                    | Purpose                                   |
+| ----------------- | --------------------------------------------- | ----------------------------------------- |
+| Channel System    | Channel registry (`src/channels/registry.ts`) | Channels self-register at startup         |
+| Message Storage   | SQLite (better-sqlite3)                       | Store messages for polling                |
+| Container Runtime | Containers (Linux VMs)                        | Isolated environments for agent execution |
+| Agent             | @anthropic-ai/claude-agent-sdk (0.2.29)       | Run Claude with tools and MCP servers     |
+| Browser Access    | web-access via host Chrome CDP                | Web interaction and screenshots           |
+| Runtime           | Node.js 20+                                   | Host process for routing and scheduling   |
 
 ---
 
@@ -280,7 +279,7 @@ nanoclaw/
 │   │       ├── index.ts           # Entry point (query loop, IPC polling, session resume)
 │   │       └── ipc-mcp-stdio.ts   # Stdio-based MCP server for host communication
 │   └── skills/
-│       └── agent-browser.md       # Browser automation skill
+
 │
 ├── dist/                          # Compiled JavaScript (gitignored)
 │

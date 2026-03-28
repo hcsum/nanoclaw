@@ -14,6 +14,7 @@ test -d /workspace/project && echo "MAIN" || echo "NOT_MAIN"
 ```
 
 If `NOT_MAIN`, respond with:
+
 > This command is available in your main chat only. Send `/capabilities` there to see what I can do.
 
 Then stop — do not generate the report.
@@ -30,20 +31,22 @@ List skill directories available to you:
 ls -1 /home/node/.claude/skills/ 2>/dev/null || echo "No skills found"
 ```
 
-Each directory is an installed skill. The directory name is the skill name (e.g., `agent-browser` → `/agent-browser`).
+Each directory is an installed skill. The directory name is the skill name.
 
 ### 2. Available tools
 
 Read the allowed tools from your SDK configuration. You always have access to:
+
 - **Core:** Bash, Read, Write, Edit, Glob, Grep
 - **Web:** WebSearch, WebFetch
 - **Orchestration:** Task, TaskOutput, TaskStop, TeamCreate, TeamDelete, SendMessage
 - **Other:** TodoWrite, ToolSearch, Skill, NotebookEdit
-- **MCP:** mcp__nanoclaw__* (messaging, tasks, group management)
+- **MCP:** mcp**nanoclaw**\* (messaging, tasks, group management)
 
 ### 3. MCP server tools
 
 The NanoClaw MCP server exposes these tools (via `mcp__nanoclaw__*` prefix):
+
 - `send_message` — send a message to the user/group
 - `schedule_task` — schedule a recurring or one-time task
 - `list_tasks` — list scheduled tasks
@@ -53,12 +56,13 @@ The NanoClaw MCP server exposes these tools (via `mcp__nanoclaw__*` prefix):
 - `update_task` — update an existing task
 - `register_group` — register a new chat/group (main only)
 
-### 4. Container skills (Bash tools)
+### 4. Container utilities
 
-Check for executable tools in the container:
+Check versions in the container:
 
 ```bash
-which agent-browser 2>/dev/null && echo "agent-browser: available" || echo "agent-browser: not found"
+node --version 2>/dev/null
+claude --version 2>/dev/null
 ```
 
 ### 5. Group info
@@ -76,7 +80,6 @@ Present the report as a clean, readable message. Example:
 📋 *NanoClaw Capabilities*
 
 *Installed Skills:*
-• /agent-browser — Browse the web, fill forms, extract data
 • /capabilities — This report
 (list all found skills)
 
@@ -86,8 +89,9 @@ Present the report as a clean, readable message. Example:
 • Orchestration: Task, TeamCreate, SendMessage
 • MCP: send_message, schedule_task, list_tasks, pause/resume/cancel/update_task, register_group
 
-*Container Tools:*
-• agent-browser: ✓
+*Container Utilities:*
+• Node: vXX.X.X
+• Claude Code: vX.X.X
 
 *System:*
 • Group memory: yes/no

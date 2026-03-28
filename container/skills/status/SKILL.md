@@ -14,6 +14,7 @@ test -d /workspace/project && echo "MAIN" || echo "NOT_MAIN"
 ```
 
 If `NOT_MAIN`, respond with:
+
 > This command is available in your main chat only. Send `/status` there to check system status.
 
 Then stop — do not generate the report.
@@ -50,12 +51,11 @@ Confirm which tool families are available to you:
 - **Core:** Bash, Read, Write, Edit, Glob, Grep
 - **Web:** WebSearch, WebFetch
 - **Orchestration:** Task, TaskOutput, TaskStop, TeamCreate, TeamDelete, SendMessage
-- **MCP:** mcp__nanoclaw__* (send_message, schedule_task, list_tasks, pause_task, resume_task, cancel_task, update_task, register_group)
+- **MCP:** mcp**nanoclaw**\* (send_message, schedule_task, list_tasks, pause_task, resume_task, cancel_task, update_task, register_group)
 
 ### 4. Container utilities
 
 ```bash
-which agent-browser 2>/dev/null && echo "agent-browser: available" || echo "agent-browser: not installed"
 node --version 2>/dev/null
 claude --version 2>/dev/null
 ```
@@ -91,7 +91,6 @@ Present as a clean, readable message:
 • Core: ✓  Web: ✓  Orchestration: ✓  MCP: ✓
 
 *Container:*
-• agent-browser: ✓ / not installed
 • Node: vXX.X.X
 • Claude Code: vX.X.X
 

@@ -1,6 +1,6 @@
 ---
 name: learn-google-trends
-description: Research Google Trends with a dedicated compare tool. Use when the user wants keyword demand comparison, average interest, or top related queries from Google Trends.
+description: Do research on Google Trends.
 ---
 
 # Learn from Google Trends
@@ -38,6 +38,7 @@ Prefer the dedicated Google Trends MCP tool over generic browsing when it is ava
 4. Synthesize for action
    - Translate findings into naming choices, content angles, and niche validation steps.
    - Call out whether one keyword appears broader, more commercial, or more specific.
+   - Use the result to decide which keyword deserves SERP inspection next, not as the final decision by itself.
 
 ## What to look for
 
@@ -57,19 +58,28 @@ When reporting back, try to include:
 - which keyword has the highest average interest
 - the strongest top-query patterns for each keyword
 - what these patterns imply for site naming, positioning, or content
+- which terms seem better for quick validation versus longer-term opportunity
 - the Google Trends compare URL used
 
-Write findings into the workspace research notes at `/workspace/group/research/google-trends-notes.md`.
+**REQUIRED — write findings to `/workspace/group/research/google-trends-notes.md` before returning.**
 
-When adding a new entry or appending a section:
+This file may not exist yet — if it doesn't, create it. Writing to this file is not optional. Returning without writing = incomplete execution.
 
-- always include the current date and time
-- keep each notes file around 1000 lines and do not let it grow much beyond that
-- when the current file is full, start a new file in the same folder using sequential names like `google-trends-note-1.md`, `google-trends-note-2.md`, and so on
+Each entry must include:
+
+- date and time
+- the keywords compared and the `google_trends_compare` URL used
+- average interest scores for each keyword
+- top query patterns per keyword (specific phrases, not just "high intent queries")
+- **My interpretation:** which keyword is more promising and why, based on this data combined with other evidence I've collected
+- what to check next (SERP, X signals, etc.)
+
+Keep each notes file around 1000 lines; start `google-trends-note-1.md`, `google-trends-note-2.md`, etc. when full.
 
 ## Avoid
 
 - treating relative interest as literal search volume
+- treating Trends alone as enough to recommend building a site
 - assuming top queries alone prove a market
 - comparing too many unrelated keywords in one run
 - returning raw rows without interpretation

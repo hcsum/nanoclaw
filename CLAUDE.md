@@ -8,18 +8,17 @@ Single Node.js process with skill-based channel system. Channels (WhatsApp, Tele
 
 ## Key Files
 
-| File                                | Purpose                                                    |
-| ----------------------------------- | ---------------------------------------------------------- |
-| `src/index.ts`                      | Orchestrator: state, message loop, agent invocation        |
-| `src/channels/registry.ts`          | Channel registry (self-registration at startup)            |
-| `src/ipc.ts`                        | IPC watcher and task processing                            |
-| `src/router.ts`                     | Message formatting and outbound routing                    |
-| `src/config.ts`                     | Trigger pattern, paths, intervals                          |
-| `src/container-runner.ts`           | Spawns agent containers with mounts                        |
-| `src/task-scheduler.ts`             | Runs scheduled tasks                                       |
-| `src/db.ts`                         | SQLite operations                                          |
-| `groups/{name}/CLAUDE.md`           | Per-group memory (isolated)                                |
-| `container/skills/agent-browser.md` | Browser automation tool (available to all agents via Bash) |
+| File                       | Purpose                                             |
+| -------------------------- | --------------------------------------------------- |
+| `src/index.ts`             | Orchestrator: state, message loop, agent invocation |
+| `src/channels/registry.ts` | Channel registry (self-registration at startup)     |
+| `src/ipc.ts`               | IPC watcher and task processing                     |
+| `src/router.ts`            | Message formatting and outbound routing             |
+| `src/config.ts`            | Trigger pattern, paths, intervals                   |
+| `src/container-runner.ts`  | Spawns agent containers with mounts                 |
+| `src/task-scheduler.ts`    | Runs scheduled tasks                                |
+| `src/db.ts`                | SQLite operations                                   |
+| `groups/{name}/CLAUDE.md`  | Per-group memory (isolated)                         |
 
 ## Skills
 

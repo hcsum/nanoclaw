@@ -1,6 +1,6 @@
 ---
 name: browser-use
-description: Use a dedicated browser-use runtime as a fallback for deeper web research when the user explicitly asks for it or simpler site-specific tools are not enough.
+description: A fallback web accessing tool, only use it when the user explicitly asks for it.
 ---
 
 # browser-use
@@ -34,7 +34,7 @@ Behavior:
 - `browser_use_research` starts a background task and returns a `request_id` immediately
 - use `browser_use_status` to inspect progress
 - use `browser_use_cancel` to stop a running task
-- after calling `browser_use_research`, stop browsing in that turn and wait for the background result instead of using `agent-browser`, `WebSearch`, or `WebFetch` for the same task
+- after calling `browser_use_research`, stop browsing in that turn and wait for the background result instead of using `web-access`, `WebSearch`, or `WebFetch` for the same task
 
 Decision rule:
 
@@ -47,7 +47,7 @@ Decision rule:
 - This tool is main-group only
 - The runtime uses its own OpenAI configuration, separate from the main NanoClaw model
 - The OpenAI gateway is run in Responses API mode only
-- If the user explicitly asks for `agent-browser`, honor that and do not substitute `browser-use`
+- If the user explicitly asks for `web-access`, honor that and do not substitute `browser-use`
 - If the user asks for general research but does not mention `browser-use`, avoid it unless other web tools clearly cannot finish the job
 - If a site probably needs login and the saved session does not exist yet, tell the user to run `npm run browser-use:login` first
 - Keep the returned `request_id` when starting a task so you can check or cancel it later

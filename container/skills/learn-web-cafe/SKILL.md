@@ -1,6 +1,6 @@
 ---
 name: learn-web-cafe
-description: Research Web.Cafe for keyword ideas, site opportunities, founder lessons, and community signals. Use when the user asks about web.cafe, indie dev case studies, keyword discovery, niche research, or wants lessons extracted from new.web.cafe.
+description: Learn about how to make money through building websites around SEO keywords on Web.Cafe. Use the tools to research niche ideas, keyword discovery methods, founder case studies, and traffic/monetization patterns.
 ---
 
 # Learn from Web.Cafe
@@ -32,6 +32,11 @@ Prefer the dedicated Web.Cafe MCP tools over generic browsing when they are avai
 ## Recommended workflow
 
 Use a multi-round workflow instead of one-shot browsing.
+
+0. **Check for already-visited URLs (REQUIRED before any browsing)**
+   - Read `/workspace/group/research/visited-urls.md`
+   - Remove any URLs from your planned reading list that already appear in it
+   - Only visit URLs that are new to you
 
 1. Start broad
    - Use `web_cafe_search` for a theme like `新词`, `SEO`, `关键词`, `Adsense`, `订阅`, `工具站`, or `出海`.
@@ -65,17 +70,22 @@ When researching for Andy's indie-dev mission, prioritize:
 - site formats a solo founder can ship quickly
 - monetization fit: ads, subscriptions, affiliate, lead gen, tools, directories
 - patterns that appear across multiple posts, not isolated claims
+- clues about hidden keyword sources even when founders do not state the exact keyword directly
+- validated success cases and failure cases that change whether a niche is worth entering
 
 ## Output expectations
 
-When reporting back, try to include:
+For each case study or article read, output must include:
 
 - the candidate keyword or niche
-- why demand seems real
-- why competition may be weak or beatable
-- what kind of site should be built
-- likely monetization path
-- concrete Web.Cafe source URLs that support the conclusion
+- **specific method used** (not "they found a keyword" — what tool, what search term, what exact step)
+- **specific numbers or outcomes** (traffic, revenue, time to rank, ranking position)
+- **mechanism** (why does this work? what is the underlying reason?)
+- **My assessment:** [Do I agree this is a good opportunity? Why or why not, based on what I've seen elsewhere?]
+- concrete Web.Cafe source URLs
+- what the case implies for a solo founder right now
+
+If you cannot fill in all of the above, you have not read deeply enough. Re-read or drill down further.
 
 Write findings into the workspace research notes at `/workspace/group/research/webcafe-notes.md`.
 
@@ -90,6 +100,18 @@ When adding a new entry or appending a section:
 - keep each notes file around 1000 lines and do not let it grow much beyond that
 - when the current file is full, start a new file in the same folder using sequential names like `webcafe-note-1.md`, `webcafe-note-2.md`, and so on
 
+## Completion checklist (REQUIRED before returning)
+
+This skill is not complete until all of the following are done:
+
+- [ ] Every URL visited this session has been added to `/workspace/group/research/visited-urls.md` (date + one-line summary)
+- [ ] Any new URLs or topics discovered but not visited this session have been added to `/workspace/group/research/learning-queue.md`
+- [ ] `/workspace/group/research/webcafe-notes.md` has a new section with this session's findings
+- [ ] Every case study entry includes a "My assessment:" line with a genuine evaluation
+- [ ] If this session is part of a longer queue, use `schedule_task` to schedule the next session
+
+**Returning without completing this checklist = incomplete execution.**
+
 ## Good usage patterns
 
 - Start from `https://new.web.cafe/topics`, inspect interesting entries, then recurse with `web_cafe_visit_page`
@@ -99,6 +121,10 @@ When adding a new entry or appending a section:
 ## Avoid
 
 - treating one post as proof of a market
-- generic summaries with no URLs or no action items
+- copying founder claims without extracting the deeper keyword or site-shape lesson
+- **returning article titles as findings** — titles are not findings
+- **generic summaries with no specific method, number, or mechanism**
+- revisiting URLs already in `visited-urls.md`
 - relying only on search or only on direct page visits when both are useful
 - broad keyword suggestions with no monetization angle
+- stopping before the completion checklist is done
