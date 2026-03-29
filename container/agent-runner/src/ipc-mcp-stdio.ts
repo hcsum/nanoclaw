@@ -133,7 +133,7 @@ const server = new McpServer({
 
 server.tool(
   'browser_use_research',
-  'Use this for web research that needs a real browser, such as navigating multiple pages, interacting with dynamic sites, handling pagination, or extracting information that simple fetch/search tools may miss. Prefer this over basic web tools when the task requires step-by-step browsing. Main group only. Starts a background task and returns a request ID immediately.',
+  'Use this for web research that needs a real browser, such as navigating multiple pages, interacting with dynamic sites, handling pagination, or extracting information that simple fetch/search tools may miss. Prefer this over basic web tools when the task requires step-by-step browsing. Always read the browser-use skill before use. Main group only. Starts a background task and returns a request ID immediately.',
   {
     goal: z.string().min(1).describe('The research objective to investigate'),
     start_url: z
@@ -292,7 +292,7 @@ server.tool(
 
 server.tool(
   'web_access_call',
-  'Call the Web Access CDP Proxy API to control a real browser. Use this for tasks that require a browser with login state, dynamic content, or interactive operations. Main group only.',
+  'Call the Web Access CDP Proxy API to control a real browser. Use this for tasks that require a browser with login state, dynamic content, or interactive operations. Always read the web-access skill before use. Main group only.',
   {
     method: z
       .enum(['GET', 'POST'])
@@ -350,7 +350,7 @@ server.tool(
 
 server.tool(
   'google_trends_compare',
-  'Compare keywords on Google Trends with a real browser. Use this to capture the Average interest value for each keyword and the first page of Top queries plus change percentages for each compared keyword. Accepts either direct keywords or a Trends explore URL override. Main group only.',
+  'Compare keywords on Google Trends with a real browser. Use this to capture the Average interest value for each keyword and the first page of Top queries plus change percentages for each compared keyword. Accepts either direct keywords or a Trends explore URL override. Always read the learn-google-trends skill before use. Main group only.',
   {
     keywords: z
       .array(z.string().min(1))
@@ -412,7 +412,7 @@ server.tool(
 
 server.tool(
   'web_cafe_search',
-  'Search Web.Cafe with the site UI using a headed host browser and a saved login session. Use this for Web.Cafe-specific topic discovery, keyword research, and community insight mining. The result includes source URLs you can reuse in follow-up calls like web_cafe_visit_page for deeper multi-round exploration. Main group only.',
+  'Search Web.Cafe with the site UI using a headed host browser and a saved login session. Use this for Web.Cafe-specific topic discovery, keyword research, and community insight mining. The result includes source URLs you can reuse in follow-up calls like web_cafe_visit_page for deeper multi-round exploration. Always read the learn-web-cafe skill before use. Main group only.',
   {
     query: z.string().min(1).describe('Search query to run inside Web.Cafe'),
     goal: z
@@ -466,7 +466,7 @@ server.tool(
 
 server.tool(
   'web_cafe_explore_experiences',
-  'Explore https://new.web.cafe/experiences and representative detail pages, then synthesize the content with SEO and indie-developer analysis. Main group only.',
+  'Explore https://new.web.cafe/experiences and representative detail pages, then synthesize the content with SEO and indie-developer analysis. Always read the learn-web-cafe skill before use. Main group only.',
   {
     goal: z
       .string()
@@ -518,7 +518,7 @@ server.tool(
 
 server.tool(
   'web_cafe_explore_tutorial_articles',
-  'Explore https://new.web.cafe/tutorials?status=article and representative article pages, then synthesize the content with SEO and indie-developer analysis. Main group only.',
+  'Explore https://new.web.cafe/tutorials?status=article and representative article pages, then synthesize the content with SEO and indie-developer analysis. Always read the learn-web-cafe skill before use. Main group only.',
   {
     goal: z
       .string()
@@ -572,7 +572,7 @@ server.tool(
 
 server.tool(
   'web_cafe_explore_tutorial_columns',
-  'Explore https://new.web.cafe/tutorials?status=column and representative column pages, then synthesize the content with SEO and indie-developer analysis. Main group only.',
+  'Explore https://new.web.cafe/tutorials?status=column and representative column pages, then synthesize the content with SEO and indie-developer analysis. Always read the learn-web-cafe skill before use. Main group only.',
   {
     goal: z
       .string()
@@ -624,7 +624,7 @@ server.tool(
 
 server.tool(
   'web_cafe_visit_page',
-  'Visit a specific Web.Cafe page, extract the page content plus nearby internal Web.Cafe links, and synthesize the findings with SEO and indie-developer analysis. Use this after discovering a promising URL from topics pages, search results, or previous Web.Cafe tool outputs. It can be chained across multiple rounds. Only use Web.Cafe URLs. Main group only.',
+  'Visit a specific Web.Cafe page, extract the page content plus nearby internal Web.Cafe links, and synthesize the findings with SEO and indie-developer analysis. Use this after discovering a promising URL from topics pages, search results, or previous Web.Cafe tool outputs. It can be chained across multiple rounds. Only use Web.Cafe URLs. Always read the learn-web-cafe skill before use. Main group only.',
   {
     url: z
       .string()
@@ -1126,7 +1126,7 @@ Use available_groups.json to find the JID for a group. The folder name must be c
 
 server.tool(
   'x_read_home_feed',
-  'Read posts from X home feed for research/summarization. Main group only.',
+  'Read posts from X home feed for summarization. Always read the x-feed-summary skill before use. Main group only.',
   {
     limit: z
       .number()
@@ -1168,7 +1168,7 @@ server.tool(
 
 server.tool(
   'x_search',
-  'Search X (Twitter) for posts matching a query. Main group only. Use for research, trend discovery, or finding posts on a topic.',
+  'Search X for posts matching a query, hashtag, cashtag, or account term. Always read the x-search skill before use. Main group only.',
   {
     query: z
       .string()
