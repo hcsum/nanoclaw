@@ -1,6 +1,6 @@
 ---
 name: learn-google-trends
-description: Do research on Google Trends.
+description: Use Google Trends to compare keyword demand, find top queries, and spot user intent patterns.
 ---
 
 # Learn from Google Trends

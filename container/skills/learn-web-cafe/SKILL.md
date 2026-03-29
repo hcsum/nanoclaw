@@ -1,6 +1,6 @@
 ---
 name: learn-web-cafe
-description: Learn about how to make money through building websites around SEO keywords on Web.Cafe. Use the tools to research niche ideas, keyword discovery methods, founder case studies, and traffic/monetization patterns.
+description: Use Web.Cafe to learn indie developer monetization methodology from experienced practitioners sharing insights on keyword discovery and content strategies.
 ---
 
 # Learn from Web.Cafe
