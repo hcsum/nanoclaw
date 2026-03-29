@@ -133,7 +133,7 @@ const server = new McpServer({
 
 server.tool(
   'browser_use_research',
-  'Use this for web research that needs a real browser, such as navigating multiple pages, interacting with dynamic sites, handling pagination, or extracting information that simple fetch/search tools may miss. Prefer this over basic web tools when the task requires step-by-step browsing. Always read the browser-use skill before use. Main group only. Starts a background task and returns a request ID immediately.',
+  "you mostly won't need it unless user directly ask for it",
   {
     goal: z.string().min(1).describe('The research objective to investigate'),
     start_url: z
