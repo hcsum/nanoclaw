@@ -3,27 +3,29 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 SRC_DIR="$ROOT/container/agent-runner/src"
+SKILLS_SRC="$ROOT/container/skills"
 SESSIONS_DIR="$ROOT/data/sessions"
 IPC_FILE="$SRC_DIR/ipc-mcp-stdio.ts"
+CONTAINER_BUILD="$ROOT/container/build.sh"
 
-sync_only=0
+do_build=0
 tool_name=""
 
 usage() {
   cat <<'EOF'
-Usage: bash .claude/skills/refresh-mcp-tools/refresh.sh [--sync-only] [--tool-name NAME]
+Usage: bash .claude/skills/refresh-tools-and-skills/refresh.sh [options]
 
 Options:
-  --sync-only       Sync cached session sources without restarting NanoClaw
-  --tool-name NAME  Check that NAME appears in ipc-mcp-stdio.ts before syncing
-  -h, --help        Show this help message
+  --build          Rebuild container image before syncing
+  --tool-name NAME Check that NAME appears in ipc-mcp-stdio.ts before syncing
+  -h, --help      Show this help message
 EOF
 }
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --sync-only)
-      sync_only=1
+    --build)
+      do_build=1
       shift
       ;;
     --tool-name)
@@ -68,29 +70,54 @@ if [[ -n "$tool_name" ]]; then
 fi
 
 echo "Project root: $ROOT"
-echo "Sync source: ${SRC_DIR#$ROOT/}"
 
-synced=0
+if [[ "$do_build" -eq 1 ]]; then
+  if [[ ! -x "$CONTAINER_BUILD" ]]; then
+    echo "Build script not found or not executable: ${CONTAINER_BUILD#$ROOT/}" >&2
+    exit 1
+  fi
+  echo "Building container..."
+  "$CONTAINER_BUILD"
+fi
+
+sessions_synced=0
+
 if [[ -d "$SESSIONS_DIR" ]]; then
   while IFS= read -r -d '' session_dir; do
+    # Sync agent-runner-src
     dst="$session_dir/agent-runner-src"
     mkdir -p "$dst"
     rm -rf "$dst"
     mkdir -p "$dst"
     cp -R "$SRC_DIR"/. "$dst"/
-    echo "Synced: ${dst#$ROOT/}"
-    synced=$((synced + 1))
+    echo "Synced agent-runner-src: ${dst#$ROOT/}"
+
+    # Sync skills
+    skills_dst="$session_dir/.claude/skills"
+    if [[ -d "$SKILLS_SRC" ]]; then
+      mkdir -p "$skills_dst"
+      # Remove skills that no longer exist in source
+      for existing_skill in "$skills_dst"/*/; do
+        if [[ -d "$existing_skill" ]]; then
+          skill_name="$(basename "$existing_skill")"
+          if [[ ! -d "$SKILLS_SRC/$skill_name" ]]; then
+            echo "Removing stale skill: $skill_name"
+            rm -rf "$existing_skill"
+          fi
+        fi
+      done
+      # Copy skills from source
+      cp -R "$SKILLS_SRC"/* "$skills_dst"/
+      echo "Synced skills: ${skills_dst#$ROOT/}"
+    fi
+
+    sessions_synced=$((sessions_synced + 1))
   done < <(find "$SESSIONS_DIR" -mindepth 1 -maxdepth 1 -type d -print0)
 fi
 
-if [[ "$synced" -eq 0 ]]; then
+if [[ "$sessions_synced" -eq 0 ]]; then
   echo "No session folders found in ${SESSIONS_DIR#$ROOT/}."
   echo "Create a conversation first, then run this again."
-fi
-
-if [[ "$sync_only" -eq 1 ]]; then
-  echo "Sync complete (no restart requested)."
-  exit 0
 fi
 
 echo "Restarting NanoClaw service..."
@@ -129,7 +156,6 @@ esac
 
 echo "Done."
 echo "Next: send one test message to Andy to force a fresh container run."
-echo "If the tool is still missing, ask Andy to call mcp__nanoclaw__<tool_name> directly."
 if [[ -n "$restart_hint" ]]; then
   echo "If restart permissions failed, run this manually: $restart_hint"
 fi

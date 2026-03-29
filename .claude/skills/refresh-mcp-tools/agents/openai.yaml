@@ -1,3 +1,0 @@
-interface:
-  display_name: "Refresh MCP Tools"
-  short_description: "Sync MCP tool cache and restart NanoClaw"
