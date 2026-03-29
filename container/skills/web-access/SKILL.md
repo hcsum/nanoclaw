@@ -1,6 +1,6 @@
 ---
 name: web-access
-description: Full web access with browser CDP, dynamic pages, and login state. All networking operations must go through this skill.
+description: Full web access with browser CDP, dynamic pages, and login state. The default tool for general purpose web browsing.
 ---
 
 # web-access

@@ -1,19 +1,9 @@
 ---
 name: browser-use
-description: A fallback web accessing tool, only use it when the user explicitly asks for it.
+description: Only use it when the user explicitly asks to use browser-use to browse the web.
 ---
 
 # browser-use
-
-Use `browser-use` as a fallback research tool for tasks that need multi-step browsing, site navigation, scrolling, or reuse of a previously saved browser login session.
-
-## Use it when
-
-- The user explicitly asks to use browser-use
-- A dedicated site-specific tool does not exist for the target site, or the available dedicated tool cannot do the needed research
-- `WebSearch` or `WebFetch` would be too shallow
-- You need to inspect multiple pages before answering
-- A previously saved login session may help access the needed content
 
 ## Tool
 
