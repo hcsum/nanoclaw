@@ -58,6 +58,27 @@ interface VolumeMount {
   readonly: boolean;
 }
 
+function syncLocalSeoMcp(
+  localSeoMcpDir: string,
+  destinationDir: string,
+): boolean {
+  if (!fs.existsSync(path.join(localSeoMcpDir, 'pyproject.toml'))) {
+    return false;
+  }
+
+  fs.rmSync(destinationDir, { recursive: true, force: true });
+  fs.mkdirSync(destinationDir, { recursive: true });
+  fs.cpSync(localSeoMcpDir, destinationDir, {
+    recursive: true,
+    filter: (src) => {
+      const name = path.basename(src);
+      return !['.git', '.venv', '.pdm-build', '__pycache__'].includes(name);
+    },
+  });
+
+  return true;
+}
+
 function getCustomGatewayEnv(): Record<string, string> | null {
   const secrets = readEnvFile([
     'ANTHROPIC_BASE_URL',
@@ -81,6 +102,7 @@ function buildVolumeMounts(
 ): VolumeMount[] {
   const mounts: VolumeMount[] = [];
   const projectRoot = process.cwd();
+  const localSeoMcpDir = path.resolve(projectRoot, '..', 'seo-mcp');
   const groupDir = resolveGroupFolderPath(group.folder);
 
   if (isMain) {
@@ -218,6 +240,20 @@ function buildVolumeMounts(
     readonly: false,
   });
 
+  const groupSeoMcpDir = path.join(
+    DATA_DIR,
+    'sessions',
+    group.folder,
+    'seo-mcp',
+  );
+  if (syncLocalSeoMcp(localSeoMcpDir, groupSeoMcpDir)) {
+    mounts.push({
+      hostPath: groupSeoMcpDir,
+      containerPath: '/workspace/tools/seo-mcp',
+      readonly: false,
+    });
+  }
+
   // Additional mounts validated against external allowlist (tamper-proof from containers)
   if (group.containerConfig?.additionalMounts) {
     const validatedMounts = validateAdditionalMounts(
@@ -237,6 +273,7 @@ function buildContainerArgs(
 ): string[] {
   const args: string[] = ['run', '-i', '--rm', '--name', containerName];
   const customGatewayEnv = getCustomGatewayEnv();
+  const runtimeSecrets = readEnvFile(['CAPSOLVER_API_KEY']);
 
   // Pass host timezone so container's local time matches the user's
   args.push('-e', `TZ=${TIMEZONE}`);
@@ -289,6 +326,14 @@ function buildContainerArgs(
   if (MODEL_OVERRIDE) {
     args.push('-e', `ANTHROPIC_MODEL=${MODEL_OVERRIDE}`);
   }
+
+  // Pass CapSolver API key for seo-mcp if configured
+  const capSolverKey =
+    runtimeSecrets.CAPSOLVER_API_KEY || process.env.CAPSOLVER_API_KEY;
+  if (capSolverKey) {
+    args.push('-e', `CAPSOLVER_API_KEY=${capSolverKey}`);
+  }
+
   // Runtime-specific args for host gateway resolution
   args.push(...hostGatewayArgs());
 

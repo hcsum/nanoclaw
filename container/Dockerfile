@@ -33,6 +33,25 @@ ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium
 # Install agent-browser and claude-code globally
 RUN npm install -g agent-browser @anthropic-ai/claude-code
 
+# Install Python and uv for seo-mcp
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && curl -LsSf https://astral.sh/uv/install.sh | sh
+
+ENV PATH="/root/.local/bin:$PATH"
+
+# Create accessible cache directory
+RUN mkdir -p /tmp/uv-cache /tmp/uv-tools && chmod 777 /tmp/uv-cache /tmp/uv-tools
+ENV UV_CACHE_DIR=/tmp/uv-cache
+ENV UV_TOOL_DIR=/tmp/uv-tools
+
+# Copy uv and uvx to /usr/local/bin for node user access
+RUN cp /root/.local/bin/uv /usr/local/bin/uv && chmod 755 /usr/local/bin/uv
+RUN cp /root/.local/bin/uvx /usr/local/bin/uvx && chmod 755 /usr/local/bin/uvx
+
 # Create app directory
 WORKDIR /app
 

@@ -62,6 +62,33 @@ interface SDKUserMessage {
 const IPC_INPUT_DIR = '/workspace/ipc/input';
 const IPC_INPUT_CLOSE_SENTINEL = path.join(IPC_INPUT_DIR, '_close');
 const IPC_POLL_MS = 500;
+const LOCAL_SEO_MCP_DIR = '/workspace/tools/seo-mcp';
+
+function createSeoMcpServerConfig(): {
+  command: string;
+  args: string[];
+  env: Record<string, string>;
+} {
+  const env = {
+    CAPSOLVER_API_KEY: process.env.CAPSOLVER_API_KEY || '',
+    UV_CACHE_DIR: '/tmp/uv-cache',
+    UV_TOOL_DIR: '/tmp/uv-tools',
+  };
+
+  if (fs.existsSync(path.join(LOCAL_SEO_MCP_DIR, 'pyproject.toml'))) {
+    return {
+      command: '/usr/local/bin/uvx',
+      args: ['--from', LOCAL_SEO_MCP_DIR, 'seo-mcp'],
+      env,
+    };
+  }
+
+  return {
+    command: '/usr/local/bin/uvx',
+    args: ['--python', '3.11', 'seo-mcp'],
+    env,
+  };
+}
 
 /**
  * Push-based async iterable for streaming user messages to the SDK.
@@ -595,6 +622,8 @@ async function runQuery(
     log(`Additional directories: ${extraDirs.join(', ')}`);
   }
 
+  const seoMcpServer = createSeoMcpServerConfig();
+
   const queryOptions: Options = {
     cwd: '/workspace/group',
     additionalDirectories: extraDirs.length > 0 ? extraDirs : undefined,
@@ -628,6 +657,7 @@ async function runQuery(
       'Skill',
       'NotebookEdit',
       'mcp__nanoclaw__*',
+      'mcp__seo__*',
     ],
     env: sdkEnv,
     permissionMode: 'bypassPermissions',
@@ -643,9 +673,16 @@ async function runQuery(
           NANOCLAW_IS_MAIN: containerInput.isMain ? '1' : '0',
         },
       },
+      seo: {
+        command: seoMcpServer.command,
+        args: seoMcpServer.args,
+        env: seoMcpServer.env,
+      },
     },
     hooks: {
-      PreCompact: [{ hooks: [createPreCompactHook(containerInput.assistantName)] }],
+      PreCompact: [
+        { hooks: [createPreCompactHook(containerInput.assistantName)] },
+      ],
     },
   };
 
@@ -795,13 +832,16 @@ async function main(): Promise<void> {
           allowDangerouslySkipPermissions: true,
           settingSources: ['project', 'user'] as const,
           hooks: {
-            PreCompact: [{ hooks: [createPreCompactHook(containerInput.assistantName)] }],
+            PreCompact: [
+              { hooks: [createPreCompactHook(containerInput.assistantName)] },
+            ],
           },
         },
       })) {
-        const msgType = message.type === 'system'
-          ? `system/${(message as { subtype?: string }).subtype}`
-          : message.type;
+        const msgType =
+          message.type === 'system'
+            ? `system/${(message as { subtype?: string }).subtype}`
+            : message.type;
         log(`[slash-cmd] type=${msgType}`);
 
         if (message.type === 'system' && message.subtype === 'init') {
@@ -810,14 +850,20 @@ async function main(): Promise<void> {
         }
 
         // Observe compact_boundary to confirm compaction completed
-        if (message.type === 'system' && (message as { subtype?: string }).subtype === 'compact_boundary') {
+        if (
+          message.type === 'system' &&
+          (message as { subtype?: string }).subtype === 'compact_boundary'
+        ) {
           compactBoundarySeen = true;
           log('Compact boundary observed — compaction completed');
         }
 
         if (message.type === 'result') {
           const resultSubtype = (message as { subtype?: string }).subtype;
-          const textResult = 'result' in message ? (message as { result?: string }).result : null;
+          const textResult =
+            'result' in message
+              ? (message as { result?: string }).result
+              : null;
 
           if (resultSubtype?.startsWith('error')) {
             hadError = true;
@@ -844,11 +890,15 @@ async function main(): Promise<void> {
       writeOutput({ status: 'error', result: null, error: errorMsg });
     }
 
-    log(`Slash command done. compactBoundarySeen=${compactBoundarySeen}, hadError=${hadError}`);
+    log(
+      `Slash command done. compactBoundarySeen=${compactBoundarySeen}, hadError=${hadError}`,
+    );
 
     // Warn if compact_boundary was never observed — compaction may not have occurred
     if (!hadError && !compactBoundarySeen) {
-      log('WARNING: compact_boundary was not observed. Compaction may not have completed.');
+      log(
+        'WARNING: compact_boundary was not observed. Compaction may not have completed.',
+      );
     }
 
     // Only emit final session marker if no result was emitted yet and no error occurred
@@ -862,7 +912,11 @@ async function main(): Promise<void> {
       });
     } else if (!hadError) {
       // Emit session-only marker so host updates session tracking
-      writeOutput({ status: 'success', result: null, newSessionId: slashSessionId });
+      writeOutput({
+        status: 'success',
+        result: null,
+        newSessionId: slashSessionId,
+      });
     }
     return;
   }
