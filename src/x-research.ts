@@ -154,7 +154,7 @@ export async function handleXResearchIpc(
   switch (type) {
     case 'x_read_home_feed':
       result = await runScript('read-home', {
-        limit: Number.isFinite(data.limit) ? data.limit : 25,
+        limit: Number.isFinite(data.limit) ? data.limit : 40,
       });
       break;
     case 'x_search':
