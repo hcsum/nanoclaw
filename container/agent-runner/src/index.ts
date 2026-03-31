@@ -661,8 +661,6 @@ async function runQuery(
       'mcp__nanoclaw__resume_task',
       'mcp__nanoclaw__cancel_task',
       'mcp__nanoclaw__refresh_groups',
-      'mcp__nanoclaw__x_read_home_feed',
-      'mcp__nanoclaw__x_search',
       'mcp__nanoclaw__google_trends_compare',
       'mcp__nanoclaw__web_access_call',
       'mcp__nanoclaw__web_access_wait',

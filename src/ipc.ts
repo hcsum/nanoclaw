@@ -12,7 +12,6 @@ import { logger } from './logger.js';
 import { RegisteredGroup } from './types.js';
 import { handleBrowserUseIpc } from './browser-use.js';
 import { handleWebAccessIpc } from './web-access.js';
-import { handleXResearchIpc } from './x-research.js';
 
 export interface IpcDeps {
   sendMessage: (jid: string, text: string) => Promise<void>;
@@ -492,14 +491,6 @@ export async function processTaskIpc(
       if (handledByGoogleTrends) {
         break;
       }
-      const handledByX = await handleXResearchIpc(
-        data,
-        sourceGroup,
-        isMain,
-        DATA_DIR,
-      );
-      if (!handledByX) {
-        logger.warn({ type: data.type }, 'Unknown IPC task type');
-      }
+      logger.warn({ type: data.type }, 'Unknown IPC task type');
   }
 }

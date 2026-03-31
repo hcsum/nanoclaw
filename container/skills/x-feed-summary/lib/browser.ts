@@ -1,10 +1,6 @@
-import { spawn } from 'child_process';
-import fs from 'fs';
 import http from 'http';
 
 import { config } from './config.js';
-
-export { config };
 
 export interface ScriptResult {
   success: boolean;
@@ -42,81 +38,12 @@ function parseJson(text: string): unknown {
   }
 }
 
-function formatCommandFailure(output: string, fallback: string): string {
-  const text = output.trim();
-  if (!text) return fallback;
-  const lines = text
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean);
-  return lines.slice(-6).join('\n');
-}
-
-export async function ensureProxyReady(): Promise<void> {
-  if (!fs.existsSync(config.webAccessCheckScript)) {
-    throw new Error(
-      `Web Access setup script not found: ${config.webAccessCheckScript}`,
-    );
-  }
-
-  await new Promise<void>((resolve, reject) => {
-    const proc = spawn('bash', [config.webAccessCheckScript], {
-      cwd: config.projectRoot,
-      env: { ...process.env, NANOCLAW_ROOT: config.projectRoot },
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-
-    let stdout = '';
-    let stderr = '';
-
-    proc.stdout.on('data', (chunk) => {
-      stdout += chunk.toString();
-    });
-    proc.stderr.on('data', (chunk) => {
-      stderr += chunk.toString();
-    });
-
-    const timer = setTimeout(() => {
-      proc.kill('SIGTERM');
-      reject(
-        new Error(
-          `Web Access setup timed out after ${Math.round(config.timeouts.setup / 1000)}s`,
-        ),
-      );
-    }, config.timeouts.setup);
-
-    proc.on('close', (code) => {
-      clearTimeout(timer);
-      if (code === 0) {
-        resolve();
-        return;
-      }
-
-      reject(
-        new Error(
-          formatCommandFailure(
-            `${stderr}\n${stdout}`,
-            `Web Access setup failed with code ${String(code)}`,
-          ),
-        ),
-      );
-    });
-
-    proc.on('error', (err) => {
-      clearTimeout(timer);
-      reject(new Error(`Failed to start Web Access setup: ${err.message}`));
-    });
-  });
-}
-
 export async function callProxy<T = unknown>(input: {
   method: 'GET' | 'POST';
   endpoint: string;
   query?: Record<string, string | number | boolean | undefined>;
   body?: string;
 }): Promise<T> {
-  await ensureProxyReady();
-
   const url = new URL(input.endpoint, config.proxyBaseUrl);
   for (const [key, value] of Object.entries(input.query || {})) {
     if (value == null) continue;
@@ -149,7 +76,7 @@ export async function callProxy<T = unknown>(input: {
                 ? parsed.error
                 : data.trim() ||
                   `Proxy request failed with status ${String(res.statusCode)}`;
-            reject(new Error(message));
+            reject(new Error(`${message}\n${config.webAccessHint}`));
             return;
           }
 
@@ -159,9 +86,9 @@ export async function callProxy<T = unknown>(input: {
     );
 
     req.on('timeout', () => {
-      req.destroy(new Error('Proxy request timed out'));
+      req.destroy(new Error(config.webAccessHint));
     });
-    req.on('error', reject);
+    req.on('error', () => reject(new Error(config.webAccessHint)));
 
     if (input.body) req.write(input.body);
     req.end();

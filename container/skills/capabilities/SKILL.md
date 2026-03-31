@@ -51,7 +51,6 @@ Common examples include:
 
 - `schedule_task`, `pause_task`, `resume_task`, `cancel_task`
 - `refresh_groups`
-- `x_read_home_feed`, `x_search`
 - `google_trends_compare`
 - `web_access_call`, `web_access_wait`, `web_access_screenshot`, `web_access_go`, `web_access_eval`
 
@@ -88,7 +87,7 @@ Present the report as a clean, readable message. Example:
 • Core: Bash, Read, Write, Edit, Glob, Grep
 • Web: WebSearch, WebFetch
 • Orchestration: Task, TeamCreate, SendMessage
-• MCP: schedule_task, pause_task, resume_task, cancel_task, refresh_groups, x_read_home_feed, x_search, google_trends_compare, web_access_call, web_access_wait, web_access_screenshot, web_access_go, web_access_eval
+• MCP: schedule_task, pause_task, resume_task, cancel_task, refresh_groups, google_trends_compare, web_access_call, web_access_wait, web_access_screenshot, web_access_go, web_access_eval
 
 *Container Utilities:*
 • Node: vXX.X.X

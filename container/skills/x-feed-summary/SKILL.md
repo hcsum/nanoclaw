@@ -5,12 +5,18 @@ description: Read and summarize X home feed for important themes, sentiment, and
 
 # X Feed Summary
 
-Use `x_read_home_feed` when the user wants to analyze what's appearing in their X home feed for important themes, sentiment, and emerging narratives.
+Use the local X home-feed script when the user wants to analyze what's appearing in their X home feed for important themes, sentiment, and emerging narratives.
 
-## Tool
+## Command
 
-- `x_read_home_feed`
-  - Read posts from the user's X home feed for summarization and signal detection
+Run:
+
+```bash
+printf '%s' '{"limit":40}' | NANOCLAW_ROOT=/home/node npx tsx /home/node/.claude/skills/x-feed-summary/scripts/read-home.ts
+```
+
+- The script returns JSON with `success`, `message`, and optional `data`.
+- If the proxy is unavailable, use Web Access first so the host-side browser proxy is started, then retry.
 
 ## Output format
 

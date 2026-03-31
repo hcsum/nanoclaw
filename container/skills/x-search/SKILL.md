@@ -5,12 +5,19 @@ description: Search X posts by query, hashtag, cashtag, or account-related term.
 
 # X Search
 
-Use `x_search` when the user wants to find what people are saying on X about a specific topic, brand, product, or person.
+Use the local X search script when the user wants to find what people are saying on X about a specific topic, brand, product, or person.
 
-## Tool
+## Command
 
-- `x_search`
-  - Search X posts by query, hashtag, cashtag, or account-related term
+Run:
+
+```bash
+printf '%s' '{"query":"<query>","limit":20}' | NANOCLAW_ROOT=/home/node npx tsx /home/node/.claude/skills/x-search/scripts/search.ts
+```
+
+- Replace `<query>` with a short search term.
+- The script returns JSON with `success`, `message`, and optional `data`.
+- If the proxy is unavailable, use Web Access first so the host-side browser proxy is started, then retry.
 
 ## Search workflow
 
