@@ -1,130 +1,110 @@
 ---
 name: learn-web-cafe
-description: Use Web.Cafe to learn indie developer monetization methodology from experienced practitioners sharing insights on keyword discovery and content strategies.
+description: Visit https://web.cafe to learn indie developer growth methodology from experienced practitioners sharing real-world insights on promotion, niche discovery, market research, and mindset.
 ---
 
 # Learn from Web.Cafe
 
-Use Web.Cafe as a research source for:
+Use the `web-access` skill to explore and learn from the community.
 
-- profitable niche ideas
-- keyword discovery methods
-- founder case studies and lessons learned
-- traffic, SEO, content, and monetization patterns
+## Required Browsing Mode
 
-Prefer the dedicated Web.Cafe MCP tools over generic browsing when they are available.
+All Web.Cafe browsing should go through `web-access`.
 
-## Core tools
+- Load `web-access` first.
+- Use the host browser through the `web_access_*` tools.
+- Operate in your own background tab.
+- Close tabs you created after the work is complete.
 
-- `web_cafe_search`
-  - Best for discovering topics, posts, and angles from a keyword or theme
-  - Good starting point when you do not yet know which page to inspect
-- `web_cafe_visit_page`
-  - Best for drilling into a specific `https://new.web.cafe/...` page
-  - Also inspects nearby related pages and exposes source URLs for chaining
-- `web_cafe_explore_experiences`
-  - Best for scanning founder case studies and execution writeups
-- `web_cafe_explore_tutorial_articles`
-  - Best for tactical how-to content
-- `web_cafe_explore_tutorial_columns`
-  - Best for recurring columns and deeper thematic series
+## How to navigate Web.Cafe reliably
 
-## Recommended workflow
+Web.Cafe uses client-side routing and some clickable content does not expose a normal `href` in the DOM. Do not assume article URLs are always available from anchor tags.
 
-Use a multi-round workflow instead of one-shot browsing.
+- Prefer inspecting the rendered page first with `web_access_eval`.
+- If a card or article title is a clickable element such as `p.cursor-pointer`, click the actual rendered element instead of trying to reconstruct the URL.
+- Before clicking, assign the target node a temporary id in `web_access_eval`, scroll it into view, then click it with `web_access_call` using `/clickAt` or `/click`.
+- After clicking, check whether navigation opened a new tab or changed the current tab by comparing `/targets` and `/info`.
+- If direct clicking fails, fall back to `element.click()` inside `web_access_eval`, then re-check `/targets` and `/info`.
 
-0. **Check for already-visited URLs (REQUIRED before any browsing)**
-   - Read `/workspace/group/research/visited-urls.md`
-   - Remove any URLs from your planned reading list that already appear in it
-   - Only visit URLs that are new to you
+For pages that list many articles, a reliable pattern is:
 
-1. Start broad
-   - Use `web_cafe_search` for a theme like `新词`, `SEO`, `关键词`, `Adsense`, `订阅`, `工具站`, or `出海`.
-   - If the user already gave a Web.Cafe URL such as `https://new.web.cafe/topics`, start with `web_cafe_visit_page` on that page.
+1. Use `web_access_eval` to find the title node by visible text.
+2. Add a temporary id such as `nc-target` and call `scrollIntoView({ block: "center" })`.
+3. Click `#nc-target` with `/clickAt` first.
+4. Re-check `/targets` and `/info` to discover the opened detail page.
 
-2. Extract promising pages
-   - Read the returned summary and `Sources` URLs.
-   - Identify promising subpages: concrete case studies, keyword methods, monetization posts, niche breakdowns, tool comparisons, failure writeups.
+Do not rely only on `a[href]` collection for Web.Cafe exploration.
 
-3. Drill down
-   - Call `web_cafe_visit_page` on the most interesting URL.
-   - Reuse newly discovered URLs from that result for another round if needed.
-   - Repeat until you have enough evidence, not just one anecdote.
+## What to extract
 
-4. Cross-check
-   - Use `web_cafe_search` again with narrower or adjacent terms discovered during browsing.
-   - Example: start with `新词`, then refine into `比赛`, `流量`, `Adsense`, `工具站`, or a niche name you found.
+For each case study or discussion, capture the underlying methodology, not the surface details:
 
-5. Synthesize for action
-   - Do not just summarize pages.
-   - Convert findings into decisions: keyword opportunity, site idea, monetization path, risk level, and next validation steps.
+- **Promotion** — how did they drive traffic? What channels, tactics, or strategies did they use?
+- **Niche discovery** — how did they find or come up with their niche? What was their thought process?
+- **Market research** — what tools and methods did they use to validate demand? How did they assess competition?
+- **Methodology and mindset** — what principles or frameworks guide their decisions? How do they think about risk, time investment, and tradeoffs?
 
-## What to look for
+After each session, actively revise your notes rather than just appending. Update beliefs that changed, note contradictions, and refine principles that became more precise.
 
-When researching for Andy's indie-dev mission, prioritize:
+## Learning Goal
 
-- repeated user pain points
-- high-intent search behavior
-- underserved long-tail keywords
-- weak competitors or low-quality existing pages
-- site formats a solo founder can ship quickly
-- monetization fit: ads, subscriptions, affiliate, lead gen, tools, directories
-- patterns that appear across multiple posts, not isolated claims
-- clues about hidden keyword sources even when founders do not state the exact keyword directly
-- validated success cases and failure cases that change whether a niche is worth entering
+Understand how experienced indie founders approach building and growing websites — their processes, tools, and mental models. Extract transferable insights about promotion channels, niche selection, market validation, and the mindset required for solo projects. Do not look for specific keywords or traffic numbers — those are symptoms, not causes.
 
-## Output expectations
+## Working style
 
-For each case study or article read, output must include:
+1. **Before starting**: Read `/workspace/group/webcafe/notes.md` thoroughly. Understand what you've already covered and what patterns or principles you've identified. Decide what new questions or gaps to explore this session.
+2. **Explore and read**: Use `web-access` to discover and read relevant content. Start broad from the home page, `/experiences`, or `/tutorials`, then narrow down to specific pages by clicking through the rendered UI. If a page has little text content but video, skip it.
+3. **Synthesize**: After reading new content, update the notes — not by appending, but by revising and refining your overall understanding. Update the "What I know now" section with new/evolved insights, add new questions to "What I still want to learn", and note any contradictions or nuances you discovered.
 
-- the candidate keyword or niche
-- **specific method used** (not "they found a keyword" — what tool, what search term, what exact step)
-- **specific numbers or outcomes** (traffic, revenue, time to rank, ranking position)
-- **mechanism** (why does this work? what is the underlying reason?)
-- **My assessment:** [Do I agree this is a good opportunity? Why or why not, based on what I've seen elsewhere?]
-- concrete Web.Cafe source URLs
-- what the case implies for a solo founder right now
+## About web.cafe
 
-If you cannot fill in all of the above, you have not read deeply enough. Re-read or drill down further.
+- https://new.web.cafe, home page shows latest posts across sections
+- https://new.web.cafe/experiences — team experiences shared by the community owner
+- https://new.web.cafe/tutorials — tutorial columns and articles
+- The site search uses Simplified Chinese, so search in Chinese unless the term is widely-known in English (e.g. "SEO", "Adsense", "API")
 
-Write findings into the workspace research notes at `/workspace/group/research/webcafe-notes.md`.
+## Notes structure
 
-When adding a new entry or appending a section:
+The `/workspace/group/webcafe/notes.md` should evolve over time and serve as a living document of your evolving understanding. A good structure:
 
-- always include the current date and time
-- write enough detail that someone can understand the research later without reopening the source pages
-- include: the user question or goal, the search terms used, key findings, supporting evidence, concrete source URLs, and recommended next steps
-- capture specific facts and examples from sources instead of only high-level summaries
-- note uncertainty, conflicting signals, or weak evidence when present
-- prefer structured sections and bullets over a short paragraph
-- keep each notes file around 1000 lines and do not let it grow much beyond that
-- when the current file is full, start a new file in the same folder using sequential names like `webcafe-note-1.md`, `webcafe-note-2.md`, and so on
+```markdown
+# Web.Cafe 学习笔记
+
+## What I know now (updated each session)
+
+- Key principles and frameworks discovered
+- Patterns across multiple case studies (with URLs)
+- How indie founders approach specific problems
+
+## What I still want to learn (refreshed each session)
+
+- Questions that emerged from this session
+- Topics to explore next time
+- Contradictions or uncertainties to resolve
+
+## Key sources (always updated)
+
+- URLs of pages that shaped your understanding
+
+## This session's raw findings (temporary)
+
+- Brief notes of what was read this session
+```
+
+When you update notes after a session, use the raw findings to revise the "What I know now" and "What I still want to learn" sections — integrate new insights, drop things that turned out to be wrong or superficial, and sharpen the framing.
 
 ## Completion checklist (REQUIRED before returning)
 
 This skill is not complete until all of the following are done:
 
-- [ ] Every URL visited this session has been added to `/workspace/group/research/visited-urls.md` (date + one-line summary)
-- [ ] Any new URLs or topics discovered but not visited this session have been added to `/workspace/group/research/learning-queue.md`
-- [ ] `/workspace/group/research/webcafe-notes.md` has a new section with this session's findings
-- [ ] Every case study entry includes a "My assessment:" line with a genuine evaluation
-- [ ] If this session is part of a longer queue, use `schedule_task` to schedule the next session
-
-**Returning without completing this checklist = incomplete execution.**
-
-## Good usage patterns
-
-- Start from `https://new.web.cafe/topics`, inspect interesting entries, then recurse with `web_cafe_visit_page`
-- Use `web_cafe_search` to discover terminology real founders use, then search those terms again
-- Combine case-study pages with tutorial pages before recommending a direction
+- [ ] Revised `/workspace/group/webcafe/notes.md` — integrated new insights, updated beliefs, refined key principles
 
 ## Avoid
 
-- treating one post as proof of a market
-- copying founder claims without extracting the deeper keyword or site-shape lesson
+- treating one post as proof of a winning strategy
+- copying founder claims without extracting the underlying approach or reasoning
 - **returning article titles as findings** — titles are not findings
-- **generic summaries with no specific method, number, or mechanism**
-- revisiting URLs already in `visited-urls.md`
-- relying only on search or only on direct page visits when both are useful
-- broad keyword suggestions with no monetization angle
-- stopping before the completion checklist is done
+- **surface-level summaries** — always ask "what is this person actually doing and why?"
+- looking for specific keywords — focus on how niches are found and validated, not what the keywords are
+- relying on a single page when broader evidence is available
+- **just appending notes without revising** — always integrate new learnings into your evolving understanding

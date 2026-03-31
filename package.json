@@ -16,7 +16,6 @@
     "setup": "tsx setup/index.ts",
     "auth": "tsx src/whatsapp-auth.ts",
     "browser-use:login": "tsx src/browser-use-login.ts",
-    "web-cafe:login": "npx dotenv -e .env -- npx tsx .claude/skills/web-cafe/scripts/setup.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "mac:start": "launchctl load ~/Library/LaunchAgents/com.nanoclaw.plist",

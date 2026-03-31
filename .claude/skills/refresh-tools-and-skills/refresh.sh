@@ -8,7 +8,6 @@ SESSIONS_DIR="$ROOT/data/sessions"
 IPC_FILE="$SRC_DIR/ipc-mcp-stdio.ts"
 CONTAINER_BUILD="$ROOT/container/build.sh"
 
-do_build=0
 tool_name=""
 
 usage() {
@@ -16,7 +15,6 @@ usage() {
 Usage: bash .claude/skills/refresh-tools-and-skills/refresh.sh [options]
 
 Options:
-  --build          Rebuild container image before syncing
   --tool-name NAME Check that NAME appears in ipc-mcp-stdio.ts before syncing
   -h, --help      Show this help message
 EOF
@@ -24,10 +22,6 @@ EOF
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --build)
-      do_build=1
-      shift
-      ;;
     --tool-name)
       if [[ $# -lt 2 ]]; then
         echo "Missing value for --tool-name" >&2
@@ -71,14 +65,13 @@ fi
 
 echo "Project root: $ROOT"
 
-if [[ "$do_build" -eq 1 ]]; then
-  if [[ ! -x "$CONTAINER_BUILD" ]]; then
-    echo "Build script not found or not executable: ${CONTAINER_BUILD#$ROOT/}" >&2
-    exit 1
-  fi
-  echo "Building container..."
-  "$CONTAINER_BUILD"
+if [[ ! -x "$CONTAINER_BUILD" ]]; then
+  echo "Build script not found or not executable: ${CONTAINER_BUILD#$ROOT/}" >&2
+  exit 1
 fi
+
+echo "Building container..."
+"$CONTAINER_BUILD"
 
 sessions_synced=0
 

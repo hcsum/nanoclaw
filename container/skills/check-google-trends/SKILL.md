@@ -1,9 +1,9 @@
 ---
-name: learn-google-trends
+name: check-google-trends
 description: Use Google Trends to compare keyword demand, find top queries, and spot user intent patterns.
 ---
 
-# Learn from Google Trends
+# Check Google Trends
 
 Use Google Trends as a research source for:
 

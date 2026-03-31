@@ -191,6 +191,14 @@ function buildVolumeMounts(
   const skillsSrc = path.join(process.cwd(), 'container', 'skills');
   const skillsDst = path.join(groupSessionsDir, 'skills');
   if (fs.existsSync(skillsSrc)) {
+    fs.mkdirSync(skillsDst, { recursive: true });
+    for (const skillDir of fs.readdirSync(skillsDst)) {
+      const dstDir = path.join(skillsDst, skillDir);
+      if (!fs.statSync(dstDir).isDirectory()) continue;
+      if (!fs.existsSync(path.join(skillsSrc, skillDir))) {
+        fs.rmSync(dstDir, { recursive: true, force: true });
+      }
+    }
     for (const skillDir of fs.readdirSync(skillsSrc)) {
       const srcDir = path.join(skillsSrc, skillDir);
       if (!fs.statSync(srcDir).isDirectory()) continue;

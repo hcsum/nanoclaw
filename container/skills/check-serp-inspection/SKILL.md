@@ -1,9 +1,9 @@
 ---
-name: learn-serp-inspection
+name: check-serp-inspection
 description: Inspect live search results to judge SEO competition, SERP weakness, and whether a keyword is realistically beatable. Use the web-access skill and the host browser for SERP work.
 ---
 
-# Learn SERP Inspection
+# Check SERP Inspection
 
 Use this skill when the task requires judging whether a keyword is actually worth targeting based on the live search results page, not just trend or community signals.
 

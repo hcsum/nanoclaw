@@ -45,16 +45,17 @@ Read the allowed tools from your SDK configuration. You always have access to:
 
 ### 3. MCP server tools
 
-The NanoClaw MCP server exposes these tools (via `mcp__nanoclaw__*` prefix):
+Read the MCP tools from your SDK configuration and report the `mcp__nanoclaw__*` tools you actually have access to. Do not rely on a fixed built-in list.
 
-- `send_message` — send a message to the user/group
-- `schedule_task` — schedule a recurring or one-time task
-- `list_tasks` — list scheduled tasks
-- `pause_task` — pause a scheduled task
-- `resume_task` — resume a paused task
-- `cancel_task` — cancel and delete a task
-- `update_task` — update an existing task
-- `register_group` — register a new chat/group (main only)
+Common examples include:
+
+- `schedule_task`, `pause_task`, `resume_task`, `cancel_task`
+- `refresh_groups`
+- `x_read_home_feed`, `x_search`
+- `google_trends_compare`
+- `web_access_call`, `web_access_wait`, `web_access_screenshot`, `web_access_go`, `web_access_eval`
+
+Only list tools that are actually available in the current session.
 
 ### 4. Container utilities
 
@@ -87,7 +88,7 @@ Present the report as a clean, readable message. Example:
 • Core: Bash, Read, Write, Edit, Glob, Grep
 • Web: WebSearch, WebFetch
 • Orchestration: Task, TeamCreate, SendMessage
-• MCP: send_message, schedule_task, list_tasks, pause/resume/cancel/update_task, register_group
+• MCP: schedule_task, pause_task, resume_task, cancel_task, refresh_groups, x_read_home_feed, x_search, google_trends_compare, web_access_call, web_access_wait, web_access_screenshot, web_access_go, web_access_eval
 
 *Container Utilities:*
 • Node: vXX.X.X
