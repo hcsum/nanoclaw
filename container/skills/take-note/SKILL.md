@@ -5,25 +5,60 @@ description: Save notes when the user says "mark this down", "take a note", "mar
 
 # Take Note
 
-Write notes to `/workspace/group/notes/` when the user says things like:
+Distinguish between two types of notes:
 
-- "mark this down"
-- "take a note"
-- "write this down"
-- "remember this"
-- "markdown [something]"
+## Type 1: Content to consume later
 
-## File Naming
+Write to `/workspace/group/notes/`
 
-Format: `1.md`, `2.md`, `3.md`, ...
+Use for: articles, links, videos, resources — things the user wants to read/watch later.
 
-Start with `1.md`. Keep writing to the current file until it exceeds ~1000 lines, then create the next number file.
+Example triggers:
 
-## File Rotation
+- "save this for later"
+- "read this later"
+- "add to my reading list"
+- "bookmark this"
+- "check this out later"
 
-Write to the highest-numbered existing file under ~1000 lines. If appending would exceed ~1000 lines, create a new file with the next integer number.
+## Type 2: User preferences and facts
 
-## How to Write a Note
+Write to `./CLAUDE.md`
+
+Use for: facts about the user — interests, preferences, habits, personal info. Things the agent should remember to give personalized responses.
+
+Example triggers:
+
+- "remember I like..."
+- "I'm interested in..."
+- "my preference is..."
+- "don't forget that I..."
+- "I'm into..."
+- "you should know that I..."
+
+The `./CLAUDE.md` is the agent's memory for this channel/group. Use it for:
+
+- User's interests and hobbies
+- Communication style preferences
+- Facts about the user (name, location, etc.)
+- Things the agent should know to give better responses
+
+## "markdown [term]" Requests
+
+When the user says "markdown [term]":
+
+1. Recall relevant context from the current conversation about that term
+2. Format as:
+
+```markdown
+## term-name
+
+Description or context about the term, including what was previously discussed...
+```
+
+Default to `/workspace/group/notes/` for markdown requests unless it's clearly a user preference.
+
+## How to Write a Note (Type 1 - User Notes)
 
 ```bash
 mkdir -p /workspace/group/notes
@@ -45,26 +80,23 @@ fi
 printf '<!-- %s -->\n%s\n' "$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)" "${content}" >> /workspace/group/notes/${current_file}
 ```
 
-## "markdown [term]" Requests
+## How to Write a Note (Type 2 - Agent Memory)
 
-When the user says "markdown [term]":
-
-1. Recall relevant context from the current conversation about that term
-2. Format as:
+Append to `./CLAUDE.md` with a new section. If `./CLAUDE.md` doesn't exist, create it with this structure:
 
 ```markdown
-## term-name
+# Channel Memory
 
-Description or context about the term, including what was previously discussed...
+## User Preferences
+
+<!-- timestamp -->
+
+- Preference or fact here
 ```
 
-## Example Triggers
-
-- User: "markdown Tanstack AI"
-  -> Recall conversation context about Tanstack AI and write a description
+If the file exists, append new entries under the appropriate section.
 
 ## Notes
 
-- Notes go in `/workspace/group/notes/`
-- Files are simple markdown, numbered sequentially starting at 1
-- Each entry is timestamped with an HTML comment for provenance
+- Type 1 (content): Notes go in `/workspace/group/notes/`, numbered sequentially, timestamped
+- Type 2 (preferences): Notes go in `./CLAUDE.md` for channel-specific memory
