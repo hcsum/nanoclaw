@@ -34,3 +34,7 @@
 
 Before invoking any MCP tool, check whether a corresponding skill exists for it.
 If a skill exists, read it first — then follow its instructions for tool usage.
+
+## X Search 规则
+
+当用户让我去 X 上搜索时，如果 X search skill 搜不到相关内容，**直接告诉用户搜不到即可**，不要反复尝试其他方法（浏览器、WebFetch 等）来折腾。
