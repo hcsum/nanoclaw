@@ -41,6 +41,8 @@ Do not:
 
 4. **Session records and raw findings are not disposable.** If a session record has URLs, data, names, or observations from a browsing session, it is evidence. Do not delete it because it "lacks structure". Keep all session records intact.
 
+5. **Never delete or merge entries in `## What I Still Want to Learn`（待探索） section.** This section tracks learning goals and exploration direction. Entries here represent active learning intent — they must not be removed, consolidated, or moved out of this section, regardless of their format or whether they appear "unrefined". Only the user can decide to promote an item from this section to "What I Know Now".
+
 ## What to Delete
 
 Only delete entries that meet ALL of these conditions:
@@ -138,4 +140,5 @@ This skill is not complete until:
 - [ ] No entry was deleted because it was "too long", "too surface-level", or "needed distilling"
 - [ ] No entry was rewritten or over-simplified
 - [ ] Contradictions between sources were preserved and labeled, not resolved
+- [ ] `## What I Still Want to Learn`（待探索） section left untouched — no entries deleted, merged, or moved
 - [ ] Change report delivered to the user
