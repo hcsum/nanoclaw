@@ -13,13 +13,23 @@ let cmdId = 0;
 const pending = new Map();
 const sessions = new Map();
 
+function unique(values) {
+  return [...new Set(values.filter(Boolean))];
+}
+
+function configuredBrowserPort() {
+  const raw = process.env.WEB_ACCESS_BROWSER_PORT || '';
+  const port = parseInt(raw, 10);
+  return Number.isInteger(port) && port > 0 && port < 65536 ? port : null;
+}
+
 let WS;
-if (typeof globalThis.WebSocket !== 'undefined') {
-  WS = globalThis.WebSocket;
-} else {
-  try {
-    WS = (await import('ws')).default;
-  } catch {
+try {
+  WS = (await import('ws')).default;
+} catch {
+  if (typeof globalThis.WebSocket !== 'undefined') {
+    WS = globalThis.WebSocket;
+  } else {
     console.error('[CDP Proxy] Node.js 22+ or ws is required');
     process.exit(1);
   }
@@ -28,8 +38,14 @@ if (typeof globalThis.WebSocket !== 'undefined') {
 async function discoverChromePort() {
   const possiblePaths = [];
   const platform = os.platform();
+  const configuredPath = process.env.WEB_ACCESS_BROWSER_DEVTOOLS_FILE || '';
+  const configuredPort = configuredBrowserPort();
 
-  if (platform === 'darwin') {
+  if (configuredPath) {
+    possiblePaths.push(configuredPath);
+  }
+
+  if (!configuredPath && platform === 'darwin') {
     const home = os.homedir();
     possiblePaths.push(
       path.join(
@@ -45,13 +61,13 @@ async function discoverChromePort() {
         'Library/Application Support/Chromium/DevToolsActivePort',
       ),
     );
-  } else if (platform === 'linux') {
+  } else if (!configuredPath && platform === 'linux') {
     const home = os.homedir();
     possiblePaths.push(
       path.join(home, '.config/google-chrome/DevToolsActivePort'),
       path.join(home, '.config/chromium/DevToolsActivePort'),
     );
-  } else if (platform === 'win32') {
+  } else if (!configuredPath && platform === 'win32') {
     const localAppData = process.env.LOCALAPPDATA || '';
     possiblePaths.push(
       path.join(localAppData, 'Google/Chrome/User Data/DevToolsActivePort'),
@@ -59,7 +75,7 @@ async function discoverChromePort() {
     );
   }
 
-  for (const filePath of possiblePaths) {
+  for (const filePath of unique(possiblePaths)) {
     try {
       const content = fs.readFileSync(filePath, 'utf-8').trim();
       const lines = content.split('\n');
@@ -73,7 +89,9 @@ async function discoverChromePort() {
     } catch {}
   }
 
-  for (const port of [9222, 9229, 9333]) {
+  const portCandidates = configuredPort ? [configuredPort] : [9222, 9229, 9333];
+
+  for (const port of unique(portCandidates)) {
     if (await checkPort(port)) {
       return { port, wsPath: null };
     }
@@ -106,9 +124,61 @@ function getWebSocketUrl(port, wsPath) {
   return `ws://127.0.0.1:${port}/devtools/browser`;
 }
 
+function readJson(url) {
+  return new Promise((resolve, reject) => {
+    const req = http.get(url, (res) => {
+      let data = '';
+      res.setEncoding('utf8');
+      res.on('data', (chunk) => {
+        data += chunk;
+      });
+      res.on('end', () => {
+        if ((res.statusCode || 500) >= 400) {
+          reject(
+            new Error(`HTTP ${String(res.statusCode)} while reading ${url}`),
+          );
+          return;
+        }
+
+        try {
+          resolve(JSON.parse(data));
+        } catch (error) {
+          reject(error);
+        }
+      });
+    });
+
+    req.on('error', reject);
+    req.setTimeout(3_000, () => {
+      req.destroy(new Error(`Timed out reading ${url}`));
+    });
+  });
+}
+
+async function resolveBrowserWebSocketUrl(port, wsPath) {
+  if (wsPath) {
+    return getWebSocketUrl(port, wsPath);
+  }
+
+  const versionInfo = await readJson(`http://127.0.0.1:${port}/json/version`);
+  if (
+    versionInfo &&
+    typeof versionInfo === 'object' &&
+    typeof versionInfo.webSocketDebuggerUrl === 'string'
+  ) {
+    return versionInfo.webSocketDebuggerUrl;
+  }
+
+  return getWebSocketUrl(port, wsPath);
+}
+
 let chromePort = null;
 let chromeWsPath = null;
 let connectingPromise = null;
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 async function connect() {
   if (ws && (ws.readyState === WS.OPEN || ws.readyState === 1)) return;
@@ -118,72 +188,102 @@ async function connect() {
     const discovered = await discoverChromePort();
     if (!discovered) {
       throw new Error(
-        'Chrome remote debugging is not available. Enable it in your normal Chrome session first.',
+        'Browser remote debugging is not available. Start a configured browser instance or set WEB_ACCESS_BROWSER_*.',
       );
     }
     chromePort = discovered.port;
     chromeWsPath = discovered.wsPath;
   }
 
-  const wsUrl = getWebSocketUrl(chromePort, chromeWsPath);
+  return (connectingPromise = (async () => {
+    let lastError = null;
 
-  return (connectingPromise = new Promise((resolve, reject) => {
-    ws = new WS(wsUrl);
+    for (let attempt = 1; attempt <= 6; attempt += 1) {
+      const wsUrl = await resolveBrowserWebSocketUrl(chromePort, chromeWsPath);
+      console.log(`[CDP Proxy] connecting to ${wsUrl}`);
 
-    const onOpen = () => {
-      cleanup();
-      connectingPromise = null;
-      console.log(`[CDP Proxy] connected on port ${chromePort}`);
-      resolve();
-    };
-    const onError = (event) => {
-      cleanup();
-      connectingPromise = null;
-      const message =
-        event.message || event.error?.message || 'connection failed';
-      reject(new Error(message));
-    };
-    const onClose = () => {
-      ws = null;
-      chromePort = null;
-      chromeWsPath = null;
-      sessions.clear();
-    };
-    const onMessage = (event) => {
-      const raw = typeof event === 'string' ? event : event.data || event;
-      const text = typeof raw === 'string' ? raw : raw.toString();
-      const msg = JSON.parse(text);
+      try {
+        await new Promise((resolve, reject) => {
+          ws = new WS(wsUrl);
+          let opened = false;
 
-      if (msg.method === 'Target.attachedToTarget') {
-        const { sessionId, targetInfo } = msg.params;
-        sessions.set(targetInfo.targetId, sessionId);
+          const onOpen = () => {
+            opened = true;
+            cleanup();
+            console.log(`[CDP Proxy] connected on port ${chromePort}`);
+            resolve();
+          };
+          const onError = (event) => {
+            cleanup();
+            const message =
+              event.message || event.error?.message || 'connection failed';
+            console.error(`[CDP Proxy] websocket connect failed: ${message}`);
+            reject(new Error(message));
+          };
+          const onClose = () => {
+            ws = null;
+            if (opened) {
+              chromePort = null;
+              chromeWsPath = null;
+            }
+            sessions.clear();
+          };
+          const onMessage = (event) => {
+            const raw = typeof event === 'string' ? event : event.data || event;
+            const text = typeof raw === 'string' ? raw : raw.toString();
+            const msg = JSON.parse(text);
+
+            if (msg.method === 'Target.attachedToTarget') {
+              const { sessionId, targetInfo } = msg.params;
+              sessions.set(targetInfo.targetId, sessionId);
+            }
+
+            if (msg.id && pending.has(msg.id)) {
+              const entry = pending.get(msg.id);
+              clearTimeout(entry.timer);
+              pending.delete(msg.id);
+              entry.resolve(msg);
+            }
+          };
+
+          function cleanup() {
+            ws.removeEventListener?.('open', onOpen);
+            ws.removeEventListener?.('error', onError);
+          }
+
+          if (ws.on) {
+            ws.on('open', onOpen);
+            ws.on('error', onError);
+            ws.on('close', onClose);
+            ws.on('message', onMessage);
+          } else {
+            ws.addEventListener('open', onOpen);
+            ws.addEventListener('error', onError);
+            ws.addEventListener('close', onClose);
+            ws.addEventListener('message', onMessage);
+          }
+        });
+
+        connectingPromise = null;
+        return;
+      } catch (error) {
+        lastError = error;
+        ws = null;
+        if (
+          attempt < 6 &&
+          error instanceof Error &&
+          /404|non-101/i.test(error.message)
+        ) {
+          await sleep(500);
+          continue;
+        }
+        break;
       }
-
-      if (msg.id && pending.has(msg.id)) {
-        const entry = pending.get(msg.id);
-        clearTimeout(entry.timer);
-        pending.delete(msg.id);
-        entry.resolve(msg);
-      }
-    };
-
-    function cleanup() {
-      ws.removeEventListener?.('open', onOpen);
-      ws.removeEventListener?.('error', onError);
     }
 
-    if (ws.on) {
-      ws.on('open', onOpen);
-      ws.on('error', onError);
-      ws.on('close', onClose);
-      ws.on('message', onMessage);
-    } else {
-      ws.addEventListener('open', onOpen);
-      ws.addEventListener('error', onError);
-      ws.addEventListener('close', onClose);
-      ws.addEventListener('message', onMessage);
-    }
-  }));
+    connectingPromise = null;
+    throw lastError || new Error('connection failed');
+  })());
 }
 
 function sendCDP(method, params = {}, sessionId = null) {

@@ -3,6 +3,7 @@ import fs from 'fs';
 import http from 'http';
 import path from 'path';
 
+import { readEnvFile } from './env.js';
 import { logger } from './logger.js';
 
 interface SkillResult {
@@ -24,6 +25,41 @@ const RESULT_DIR_NAME = 'web_access_results';
 const CHECK_DEPS_TIMEOUT_MS = 130_000;
 const PROXY_REQUEST_TIMEOUT_MS = 30_000;
 const PROXY_BASE_URL = 'http://127.0.0.1:3456';
+
+function readWebAccessEnv(): Record<string, string> {
+  const envFile = readEnvFile([
+    'WEB_ACCESS_BROWSER_PORT',
+    'WEB_ACCESS_BROWSER_DEVTOOLS_FILE',
+    'WEB_ACCESS_BROWSER_PATH',
+    'WEB_ACCESS_BROWSER_USER_DATA_DIR',
+    'WEB_ACCESS_BROWSER_ARGS',
+    'CDP_PROXY_PORT',
+  ]);
+
+  return {
+    WEB_ACCESS_BROWSER_PORT:
+      process.env.WEB_ACCESS_BROWSER_PORT ||
+      envFile.WEB_ACCESS_BROWSER_PORT ||
+      '',
+    WEB_ACCESS_BROWSER_DEVTOOLS_FILE:
+      process.env.WEB_ACCESS_BROWSER_DEVTOOLS_FILE ||
+      envFile.WEB_ACCESS_BROWSER_DEVTOOLS_FILE ||
+      '',
+    WEB_ACCESS_BROWSER_PATH:
+      process.env.WEB_ACCESS_BROWSER_PATH ||
+      envFile.WEB_ACCESS_BROWSER_PATH ||
+      '',
+    WEB_ACCESS_BROWSER_USER_DATA_DIR:
+      process.env.WEB_ACCESS_BROWSER_USER_DATA_DIR ||
+      envFile.WEB_ACCESS_BROWSER_USER_DATA_DIR ||
+      '',
+    WEB_ACCESS_BROWSER_ARGS:
+      process.env.WEB_ACCESS_BROWSER_ARGS ||
+      envFile.WEB_ACCESS_BROWSER_ARGS ||
+      '',
+    CDP_PROXY_PORT: process.env.CDP_PROXY_PORT || envFile.CDP_PROXY_PORT || '',
+  };
+}
 
 function webAccessSkillDir(): string {
   return path.join(process.cwd(), '.claude', 'skills', 'web-access');
@@ -67,9 +103,14 @@ async function runCheckDeps(): Promise<SkillResult> {
   }
 
   return new Promise((resolve) => {
+    const webAccessEnv = readWebAccessEnv();
     const proc = spawn('bash', [scriptPath], {
       cwd: process.cwd(),
-      env: { ...process.env, NANOCLAW_ROOT: process.cwd() },
+      env: {
+        ...process.env,
+        ...webAccessEnv,
+        NANOCLAW_ROOT: process.cwd(),
+      },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
 
