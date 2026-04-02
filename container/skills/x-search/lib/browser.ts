@@ -1,7 +1,5 @@
 import http from 'http';
 
-import { config } from './config.js';
-
 export interface ScriptResult {
   success: boolean;
   message: string;
@@ -44,7 +42,9 @@ export async function callProxy<T = unknown>(input: {
   query?: Record<string, string | number | boolean | undefined>;
   body?: string;
 }): Promise<T> {
-  const url = new URL(input.endpoint, config.proxyBaseUrl);
+  const baseUrl =
+    process.env.CDP_PROXY_BASE_URL || 'http://host.docker.internal:3456';
+  const url = new URL(input.endpoint, baseUrl);
   for (const [key, value] of Object.entries(input.query || {})) {
     if (value == null) continue;
     url.searchParams.set(key, String(value));
@@ -55,7 +55,7 @@ export async function callProxy<T = unknown>(input: {
       url,
       {
         method: input.method,
-        timeout: config.timeouts.proxyRequest,
+        timeout: 30_000,
         headers: input.body
           ? {
               'Content-Type': 'text/plain',
@@ -76,19 +76,28 @@ export async function callProxy<T = unknown>(input: {
                 ? parsed.error
                 : data.trim() ||
                   `Proxy request failed with status ${String(res.statusCode)}`;
-            reject(new Error(`${message}\n${config.webAccessHint}`));
+            reject(
+              new Error(
+                `${message}\nThe host browser proxy is not reachable. Use Web Access first so the host-side proxy is started, then retry.`,
+              ),
+            );
             return;
           }
-
           resolve(parsed as T);
         });
       },
     );
 
     req.on('timeout', () => {
-      req.destroy(new Error(config.webAccessHint));
+      req.destroy(new Error('Proxy request timed out'));
     });
-    req.on('error', () => reject(new Error(config.webAccessHint)));
+    req.on('error', () =>
+      reject(
+        new Error(
+          'The host browser proxy is not reachable. Use Web Access first so the host-side proxy is started, then retry.',
+        ),
+      ),
+    );
 
     if (input.body) req.write(input.body);
     req.end();

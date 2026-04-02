@@ -297,9 +297,10 @@ const server = http.createServer(async (req, res) => {
 
     if (pathname === '/new') {
       const targetUrl = query.url || 'about:blank';
+      const background = query.background !== 'false';
       const response = await sendCDP('Target.createTarget', {
         url: targetUrl,
-        background: true,
+        background,
       });
       const targetId = response.result.targetId;
       if (targetUrl !== 'about:blank') {

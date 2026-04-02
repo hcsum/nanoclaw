@@ -16,12 +16,10 @@ const MESSAGES_DIR = path.join(IPC_DIR, 'messages');
 const TASKS_DIR = path.join(IPC_DIR, 'tasks');
 const X_RESULTS_DIR = path.join(IPC_DIR, 'x_results');
 const BROWSER_USE_RESULTS_DIR = path.join(IPC_DIR, 'browser_use_results');
-const GOOGLE_TRENDS_RESULTS_DIR = path.join(IPC_DIR, 'google_trends_results');
 const WEB_ACCESS_RESULTS_DIR = path.join(IPC_DIR, 'web_access_results');
 const X_RESULT_POLL_MS = 1000;
 const X_RESULT_TIMEOUT_MS = 130000;
 const BROWSER_USE_RESULT_TIMEOUT_MS = 30 * 1000;
-const GOOGLE_TRENDS_RESULT_TIMEOUT_MS = 190000;
 const WEB_ACCESS_RESULT_TIMEOUT_MS = 190000;
 
 // Context from environment variables (set by the agent runner)
@@ -51,17 +49,6 @@ async function waitForXResult(
     path.join(X_RESULTS_DIR, `${requestId}.json`),
     timeoutMs,
     'X result',
-  );
-}
-
-async function waitForGoogleTrendsResult(
-  requestId: string,
-  timeoutMs = GOOGLE_TRENDS_RESULT_TIMEOUT_MS,
-): Promise<{ success: boolean; message: string; data?: unknown }> {
-  return waitForJsonResult(
-    path.join(GOOGLE_TRENDS_RESULTS_DIR, `${requestId}.json`),
-    timeoutMs,
-    'Google Trends result',
   );
 }
 
@@ -326,68 +313,6 @@ server.tool(
     const responseText =
       result.data != null
         ? `${result.message}\n\n${JSON.stringify(result.data, null, 2)}`
-        : result.message;
-
-    return {
-      content: [{ type: 'text' as const, text: responseText }],
-      isError: !result.success,
-    };
-  },
-);
-
-server.tool(
-  'google_trends_compare',
-  'Compare keywords on Google Trends with a real browser. Use this to capture the Average interest value for each keyword and the first page of Top queries plus change percentages for each compared keyword. Accepts either direct keywords or a Trends explore URL override. Always read the learn-google-trends skill before use. Main group only.',
-  {
-    keywords: z
-      .array(z.string().min(1))
-      .min(1)
-      .max(5)
-      .optional()
-      .describe('Keywords to compare on Google Trends'),
-    geo: z
-      .string()
-      .optional()
-      .describe('Optional geography, such as Worldwide or US'),
-    date: z
-      .string()
-      .optional()
-      .describe('Optional Trends date range, such as today 5-y or today 12-m'),
-    explore_url: z
-      .string()
-      .url()
-      .optional()
-      .describe('Optional full Google Trends explore URL to open directly'),
-  },
-  async (args) => {
-    if (!isMain) {
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: 'Only the main group can use Google Trends tools.',
-          },
-        ],
-        isError: true,
-      };
-    }
-
-    const requestId = `googletrends-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    writeIpcFile(TASKS_DIR, {
-      type: 'google_trends_compare',
-      requestId,
-      keywords: args.keywords,
-      geo: args.geo,
-      date: args.date,
-      exploreUrl: args.explore_url,
-      groupFolder,
-      timestamp: new Date().toISOString(),
-    });
-
-    const result = await waitForGoogleTrendsResult(requestId);
-    const responseText =
-      result.data != null
-        ? JSON.stringify(result.data, null, 2)
         : result.message;
 
     return {
