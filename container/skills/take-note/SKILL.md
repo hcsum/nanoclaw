@@ -1,6 +1,6 @@
 ---
 name: take-note
-description: Save notes when the user says "mark this down", "take a note", "markdown [term]", or similar.
+description: Save notes when the user says "mark this down", "take a note", "markdown [term]", "remember this", or similar.
 ---
 
 # Take Note
