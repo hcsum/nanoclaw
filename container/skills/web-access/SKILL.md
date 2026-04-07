@@ -44,6 +44,16 @@ description: Full web access with browser CDP, dynamic pages, and login state. T
 
 ### 工具使用示例
 
+`/eval` 的 body 必须是原始 JavaScript 表达式或 IIFE，不要额外包一层引号。
+
+- 正确：`document.title`
+- 正确：`document.body.innerText.slice(0, 2000)`
+- 正确：`(() => document.body.innerText.slice(0, 2000))()`
+- 错误：`"document.title"`
+- 错误：`"document.body.innerText.slice(0, 2000)"`
+
+如果 `/eval` 返回值恰好等于你传入的源码字符串，优先检查自己是不是误加了外层引号，而不是先怀疑站点或 CDP 故障。
+
 ```javascript
 // 列出所有 tab
 await mcp_nanoclaw_web_access_call({

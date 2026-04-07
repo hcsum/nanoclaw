@@ -18,41 +18,69 @@ All Web.Cafe browsing should go through `web-access`.
 - Close every tab you created after the work is complete, including tabs opened speculatively and never used.
 - Prefer reusing an existing working tab instead of opening a new one unless parallel reading is actually useful.
 
-## How to navigate Web.Cafe reliably
+## Web.Cafe Playbook
 
-Web.Cafe uses client-side routing and some clickable content does not expose a normal `href` in the DOM. Do not assume article URLs are always available from anchor tags.
+Web.Cafe is a UI-first site. Some entries have no useful `href` in the DOM. The safe rule is: **discover pages from the rendered UI, not from guessed URLs**.
 
-The main failure mode on this site is trying to infer or reconstruct URLs from titles, authors, or guessed route patterns. Do not do that.
+### Hard Rules
 
-- Prefer inspecting the rendered page first with `web_access_eval`.
-- If a card or article title is a clickable element such as `p.cursor-pointer`, click the actual rendered element instead of trying to reconstruct the URL.
-- Before clicking, assign the target node a temporary id in `web_access_eval`, scroll it into view, then click it with `web_access_call` using `/clickAt` or `/click`.
-- After clicking, check whether navigation opened a new tab or changed the current tab by comparing `/targets` and `/info`.
-- If direct clicking fails, fall back to `element.click()` inside `web_access_eval`, then re-check `/targets` and `/info`.
+- Never invent URLs from title, author, slug, or guessed patterns like `/post/...` or `/topic/...`.
+- Never treat a guessed-URL `404` as evidence that the content does not exist.
+- Never say "cannot navigate" until you have checked both `/targets` and `/info` after the click.
+- Never use `WebFetch` as the main fallback for logged-in or client-rendered Web.Cafe content.
+- If `/eval` is broken, say `/eval` is broken. Do not say Web.Cafe is broken.
 
-## Required decision rules
+### Success Criteria
 
-- If `a[href]` lookup returns `undefined`, an empty array, or unrelated links, stop trying to extract a URL and click the rendered node instead.
-- Never invent detail-page URLs from a title, author, guessed slug, or guessed route such as `/post/...`.
-- Never treat a `404` page as evidence that the content does not exist if the URL was guessed rather than discovered from the UI.
-- If search results or detail listings expose real `a[href]` links, you may reuse those exact URLs.
-- If a page only exposes text and clickable nodes, the rendered click path is the source of truth.
-- If one path already returned the real URL you need, immediately abandon speculative alternative tabs and close them.
-- If a newly opened tab does not contribute to the final answer or note update, close it as soon as that becomes clear.
+A click is successful if either of these happens:
 
-For pages that list many articles, a reliable pattern is:
+1. `/info` for the current tab changes to the target page.
+2. `/targets` shows a new Web.Cafe detail tab opened by the source tab.
 
-1. Use `web_access_eval` to find the title node by visible text.
-2. Add a temporary id such as `nc-target` and call `scrollIntoView({ block: "center" })`.
-3. Click `#nc-target` with `/clickAt` first.
-4. Re-check `/targets` and `/info` to discover the opened detail page.
+If the source tab URL does not change, that does **not** mean the click failed.
 
-Example logic for a visible title with no `href`:
+### Exact Workflow
+
+1. Open or reuse one working tab on `https://new.web.cafe/`.
+2. Record the current target list with `/targets`.
+3. Inspect the page.
+4. If the page has real article links, use those exact discovered links.
+5. If the page only has clickable rendered titles, click the title node itself, not the article body, not the whole card, and not adjacent action buttons.
+6. After every click, always do both checks:
+   - `/targets`
+   - `/info?target=<source-tab>`
+7. If a new tab opened, switch work to that new target.
+8. Close tabs you no longer need.
+
+### Preferred Click Order
+
+When a listing item is rendered like "title + excerpt + bookmark button", use this order:
+
+1. title node
+2. title wrapper on the left side
+3. native `element.click()` on the title node
+
+Do not click:
+
+- the excerpt/body text
+- the full card body
+- bookmark, star, collect, or menu buttons
+
+### Exact `/eval` Pattern
+
+Use short, simple JS. Do not use long exploratory scripts when a small selector pass will do.
+
+`/eval` body must be the raw JavaScript expression or IIFE. Do not wrap it in an extra string literal.
+
+- Correct: `document.body.innerText.slice(0, 2000)`
+- Wrong: `"document.body.innerText.slice(0, 2000)"`
+
+If `/eval` returns the exact source text you sent, first check whether you accidentally wrapped the body in quotes.
 
 ```javascript
 (() => {
-  const el = Array.from(document.querySelectorAll('p, h2, h3, a')).find(
-    (node) => node.textContent?.includes('Adsense 申请的正确流程'),
+  const el = Array.from(document.querySelectorAll('p, h2, h3, a, span')).find(
+    (node) => (node.textContent || '').trim() === 'Adsense 申请的正确流程',
   );
   if (!el) return JSON.stringify({ found: false });
   el.id = 'nc-target';
@@ -60,18 +88,59 @@ Example logic for a visible title with no `href`:
   return JSON.stringify({
     found: true,
     tag: el.tagName,
-    text: el.textContent?.trim() || '',
+    text: (el.textContent || '').trim(),
   });
 })();
 ```
 
-Then click `#nc-target`. Do not run more `href` guesses after this point.
+Then run `/clickAt` on `#nc-target`.
 
-Do not rely only on `a[href]` collection for Web.Cafe exploration.
+### Exact Verification Pattern
+
+Always use this sequence after clicking:
+
+1. `GET /targets`
+2. `GET /info?target=<source-tab>`
+
+Interpretation:
+
+- New Web.Cafe detail tab present: success
+- Source tab URL changed to detail page: success
+- Neither changed: retry with a more precise target
+
+### If `/eval` Is Broken
+
+If `/eval` returns the literal JS you sent, or just echoes the request body:
+
+1. Mark `/eval` as unreliable in this runtime.
+2. Continue using `/click`, `/clickAt`, `/targets`, `/info`, `/navigate`, `/back`.
+3. Verify navigation only through tab creation and URL changes.
+4. Do not pivot to guessed URLs.
+5. Do not pivot to `WebFetch` for post bodies.
+
+### Minimal Rescue Path
+
+If the model is stuck, follow this exactly:
+
+1. `GET /targets`
+2. `GET /navigate?target=<tab>&url=https://new.web.cafe/`
+3. `POST /eval` to tag one exact title node as `#nc-target`
+4. `POST /clickAt` on `#nc-target`
+5. `GET /targets`
+6. `GET /info?target=<original-tab>`
+7. If a new detail tab exists, continue there
+8. If not, retry once with `element.click()` on the title node
+
+### What Not To Misdiagnose
+
+- `/eval` echoing input: tool problem
+- source tab unchanged but new tab exists: successful navigation
+- `WebFetch` missing article body: expected for this site, not proof of access failure
+- screenshot file path mismatch: file-path/runtime problem, not site problem
 
 ## What to extract
 
-First respect `## User Preference` at the top of `/workspace/group/webcafe/notes.md`.
+First respect `## User Preference` at the top of `/workspace/group/notes/webcafe.md`.
 
 - Use it as the scope filter for this session: it decides what to research, what to keep, and what to cut.
 - Treat items marked as not important or not important for now as out of scope unless they are necessary context for a preferred topic.
@@ -90,7 +159,7 @@ Understand how experienced indie founders approach building and growing websites
 
 ## Working style
 
-1. **Before starting**: Read `/workspace/group/webcafe/notes.md` thoroughly, including `## User Preference` at the top. Use that section to decide what is in scope this session, what to deprioritize, and which gaps are actually worth exploring.
+1. **Before starting**: Read `/workspace/group/notes/webcafe.md` thoroughly, including `## User Preference` at the top. Use that section to decide what is in scope this session, what to deprioritize, and which gaps are actually worth exploring.
 2. **Explore and read**: Use `web-access` to discover and read relevant content. Start broad from the home page, `/experiences`, or `/tutorials`, then narrow down to specific pages by clicking through the rendered UI. Follow the `User Preference` scope filter while choosing pages and extracting findings. If a page has little text content but video, skip it.
 3. **Cleanup**: Before finishing, close every `targetId` created during the session. Do not leave behind idle search tabs, 404 tabs, or speculative tabs that are no longer needed.
 
