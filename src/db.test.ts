@@ -3,12 +3,17 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
   _initTestDatabase,
   createTask,
+  deleteSession,
   deleteTask,
   getAllChats,
+  getAllSessions,
   getAllRegisteredGroups,
+  getLastBotMessageTimestamp,
   getMessagesSince,
   getNewMessages,
+  getSession,
   getTaskById,
+  setSession,
   setRegisteredGroup,
   storeChatMetadata,
   storeMessage,
@@ -140,6 +145,98 @@ describe('storeMessage', () => {
   });
 });
 
+describe('reply context', () => {
+  it('stores and retrieves reply_to fields', () => {
+    storeChatMetadata('group@g.us', '2024-01-01T00:00:00.000Z');
+
+    storeMessage({
+      id: 'reply-1',
+      chat_jid: 'group@g.us',
+      sender: '123',
+      sender_name: 'Alice',
+      content: 'Yes, on my way!',
+      timestamp: '2024-01-01T00:00:01.000Z',
+      reply_to_message_id: '42',
+      reply_to_message_content: 'Are you coming tonight?',
+      reply_to_sender_name: 'Bob',
+    });
+
+    const messages = getMessagesSince(
+      'group@g.us',
+      '2024-01-01T00:00:00.000Z',
+      'Andy',
+    );
+    expect(messages).toHaveLength(1);
+    expect(messages[0].reply_to_message_id).toBe('42');
+    expect(messages[0].reply_to_message_content).toBe(
+      'Are you coming tonight?',
+    );
+    expect(messages[0].reply_to_sender_name).toBe('Bob');
+  });
+
+  it('returns null for messages without reply context', () => {
+    storeChatMetadata('group@g.us', '2024-01-01T00:00:00.000Z');
+
+    store({
+      id: 'no-reply',
+      chat_jid: 'group@g.us',
+      sender: '123',
+      sender_name: 'Alice',
+      content: 'Just a normal message',
+      timestamp: '2024-01-01T00:00:01.000Z',
+    });
+
+    const messages = getMessagesSince(
+      'group@g.us',
+      '2024-01-01T00:00:00.000Z',
+      'Andy',
+    );
+    expect(messages).toHaveLength(1);
+    expect(messages[0].reply_to_message_id).toBeNull();
+    expect(messages[0].reply_to_message_content).toBeNull();
+    expect(messages[0].reply_to_sender_name).toBeNull();
+  });
+
+  it('retrieves reply context via getNewMessages', () => {
+    storeChatMetadata('group@g.us', '2024-01-01T00:00:00.000Z');
+
+    storeMessage({
+      id: 'reply-2',
+      chat_jid: 'group@g.us',
+      sender: '456',
+      sender_name: 'Carol',
+      content: 'Agreed',
+      timestamp: '2024-01-01T00:00:01.000Z',
+      reply_to_message_id: '99',
+      reply_to_message_content: 'We should meet',
+      reply_to_sender_name: 'Dave',
+    });
+
+    const { messages } = getNewMessages(
+      ['group@g.us'],
+      '2024-01-01T00:00:00.000Z',
+      'Andy',
+    );
+    expect(messages).toHaveLength(1);
+    expect(messages[0].reply_to_message_id).toBe('99');
+    expect(messages[0].reply_to_sender_name).toBe('Dave');
+  });
+});
+
+describe('session accessors', () => {
+  it('deletes a stored session', () => {
+    setSession('group-a', 'session-123');
+
+    expect(getSession('group-a')).toBe('session-123');
+    expect(getAllSessions()).toEqual({ 'group-a': 'session-123' });
+
+    deleteSession('group-a');
+
+    expect(getSession('group-a')).toBeUndefined();
+    expect(getAllSessions()).toEqual({});
+  });
+});
+
 // --- getMessagesSince ---
 
 describe('getMessagesSince', () => {
@@ -206,6 +303,77 @@ describe('getMessagesSince', () => {
     const msgs = getMessagesSince('group@g.us', '', 'Andy');
     // 3 user messages (bot message excluded)
     expect(msgs).toHaveLength(3);
+  });
+
+  it('recovers cursor from last bot reply when lastAgentTimestamp is missing', () => {
+    for (let i = 1; i <= 50; i++) {
+      store({
+        id: `history-${i}`,
+        chat_jid: 'group@g.us',
+        sender: 'user@s.whatsapp.net',
+        sender_name: 'User',
+        content: `old message ${i}`,
+        timestamp: `2023-06-${String(i).padStart(2, '0')}T12:00:00.000Z`,
+      });
+    }
+
+    store({
+      id: 'new-1',
+      chat_jid: 'group@g.us',
+      sender: 'user@s.whatsapp.net',
+      sender_name: 'User',
+      content: 'new message after bot reply',
+      timestamp: '2024-01-02T00:00:00.000Z',
+    });
+
+    const recovered = getLastBotMessageTimestamp('group@g.us', 'Andy');
+    expect(recovered).toBe('2024-01-01T00:00:03.000Z');
+
+    const msgs = getMessagesSince('group@g.us', recovered!, 'Andy', 10);
+    expect(msgs).toHaveLength(2);
+    expect(msgs[0].content).toBe('third');
+    expect(msgs[1].content).toBe('new message after bot reply');
+  });
+
+  it('caps messages to configured limit even with recovered cursor', () => {
+    for (let i = 1; i <= 30; i++) {
+      store({
+        id: `pending-${i}`,
+        chat_jid: 'group@g.us',
+        sender: 'user@s.whatsapp.net',
+        sender_name: 'User',
+        content: `pending message ${i}`,
+        timestamp: `2024-02-${String(i).padStart(2, '0')}T12:00:00.000Z`,
+      });
+    }
+
+    const recovered = getLastBotMessageTimestamp('group@g.us', 'Andy');
+    expect(recovered).toBe('2024-01-01T00:00:03.000Z');
+
+    const msgs = getMessagesSince('group@g.us', recovered!, 'Andy', 10);
+    expect(msgs).toHaveLength(10);
+    expect(msgs[0].content).toBe('pending message 21');
+    expect(msgs[9].content).toBe('pending message 30');
+  });
+
+  it('returns last N messages when no bot reply and no cursor exist', () => {
+    storeChatMetadata('fresh@g.us', '2024-01-01T00:00:00.000Z');
+    for (let i = 1; i <= 20; i++) {
+      store({
+        id: `fresh-${i}`,
+        chat_jid: 'fresh@g.us',
+        sender: 'user@s.whatsapp.net',
+        sender_name: 'User',
+        content: `message ${i}`,
+        timestamp: `2024-02-${String(i).padStart(2, '0')}T12:00:00.000Z`,
+      });
+    }
+
+    const recovered = getLastBotMessageTimestamp('fresh@g.us', 'Andy');
+    expect(recovered).toBeUndefined();
+
+    const msgs = getMessagesSince('fresh@g.us', '', 'Andy', 10);
+    expect(msgs).toHaveLength(10);
   });
 
   it('filters pre-migration bot messages via content prefix backstop', () => {

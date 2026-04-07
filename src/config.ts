@@ -2,6 +2,7 @@ import os from 'os';
 import path from 'path';
 
 import { readEnvFile } from './env.js';
+import { isValidTimezone } from './timezone.js';
 
 // Read config values from .env (falls back to process.env).
 // Secrets (API keys, tokens) are NOT read here — they are loaded only
@@ -10,6 +11,7 @@ const envConfig = readEnvFile([
   'ASSISTANT_NAME',
   'ASSISTANT_HAS_OWN_NUMBER',
   'ANTHROPIC_MODEL',
+  'MAX_MESSAGES_PER_PROMPT',
   'MODEL',
 ]);
 
@@ -72,6 +74,15 @@ export const MAX_CONCURRENT_CONTAINERS = Math.max(
   1,
   parseInt(process.env.MAX_CONCURRENT_CONTAINERS || '5', 10) || 5,
 );
+export const MAX_MESSAGES_PER_PROMPT = Math.max(
+  1,
+  parseInt(
+    process.env.MAX_MESSAGES_PER_PROMPT ||
+      envConfig.MAX_MESSAGES_PER_PROMPT ||
+      '10',
+    10,
+  ) || 10,
+);
 
 function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -84,5 +95,10 @@ export const TRIGGER_PATTERN = new RegExp(
 
 // Timezone for scheduled tasks (cron expressions, etc.)
 // Uses system timezone by default
+const configuredTimezone = process.env.TZ;
+const systemTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
 export const TIMEZONE =
-  process.env.TZ || Intl.DateTimeFormat().resolvedOptions().timeZone;
+  configuredTimezone && isValidTimezone(configuredTimezone)
+    ? configuredTimezone
+    : systemTimezone;
