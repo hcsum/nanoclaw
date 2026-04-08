@@ -25,9 +25,9 @@ Default to a numbered list with moderate detail.
 - A short title line is fine when the user asked for a summary or report.
 - Use `1.` `2.` `3.` style numbering.
 - Each item can be 2-4 sentences when needed.
-- Prefer 4-7 items total.
+- Prefer 5-9 items total.
 - Put the main signal first and lower-signal items later.
-- Keep citations inline only when they materially help, for example a handle or product name.
+- Keep citations, for example a handle or product name.
 
 ## How to summarize the home feed
 

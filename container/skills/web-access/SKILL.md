@@ -7,7 +7,7 @@ description: Full web access with browser CDP, dynamic pages, and login state. T
 
 ## 前置说明
 
-所有联网操作必须通过此 skill 处理，包括：搜索、网页抓取、登录后操作、网络交互等。
+默认的联网操作 skill 处理，包括：搜索、网页抓取、登录后操作、网络交互等。
 
 ## 浏览哲学
 

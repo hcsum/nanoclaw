@@ -1,6 +1,6 @@
 ---
 name: refine-web-cafe-notes
-description: Filter Web.Cafe learning notes by removing off-topic content per User Preference. Only deletes what is explicitly out of scope. Does not rewrite, consolidate, distill, or rename existing content. Use after learn-web-cafe or manually via /refine-web-cafe-notes.
+description: Filter and consolidate Web.Cafe learning notes using User Preference. Remove only explicitly out-of-scope content, and merge scattered same-topic notes into a clear canonical section without losing evidence. Use after learn-web-cafe or manually via /refine-web-cafe-notes.
 ---
 
 # Refine Web.Cafe Notes
@@ -9,19 +9,20 @@ description: Filter Web.Cafe learning notes by removing off-topic content per Us
 
 Call this skill after every `learn-web-cafe` session, before closing tabs and before declaring the learning session complete. It can also be triggered manually by the user.
 
-**Default notes path**: `/workspace/group/webcafe/notes.md`
+**Default notes path**: `/workspace/group/notes/webcafe.md`
 
 ## Core Principle
 
-This skill **filters out-of-scope content and lightly consolidates related material**, but does not rewrite or over-simplify. The notes should remain rich with case studies, data, and detail.
+This skill **filters out-of-scope content and consolidates related material into clearer canonical sections**, but does not over-simplify. The notes should remain rich with case studies, data, and detail.
 
-The goal: remove what is explicitly not wanted, group what belongs together, but keep all the substance.
+The goal: remove what is explicitly not wanted, group what belongs together, reduce duplication, and keep all the substance.
 
 Do:
 
 - Delete entries explicitly marked out of scope in `## User Preference`
 - Merge duplicate or near-duplicate entries on the same topic (combine into one, keep all data from both)
 - Group related content under clear section headings
+- Consolidate scattered same-topic notes into one canonical section when they are really teaching the same concept
 - Keep all case studies, data points, URLs, names, formulas, and session records intact
 
 Do not:
@@ -31,6 +32,24 @@ Do not:
 - Force分散的笔记合并成几条干巴巴的原则
 - Reduce case studies to bullet-point summaries — preserve the narrative and specific numbers
 
+## Canonical-section rule
+
+When the same topic appears in multiple places, prefer one canonical section and merge the others into it.
+
+Use this especially for repeated concept blocks like:
+
+- formulas and frameworks
+- method lists
+- principle summaries
+- repeated tool lists
+- repeated "good vs bad" criteria
+
+When a concept appears once as a core concept section and later again inside a session recap, merge the substantive content into the main concept section.
+
+After merging, keep only the genuinely new session-specific additions, caveats, or source attribution in the session area.
+
+Do not keep two full versions of the same concept just because one came from a later session.
+
 ## Absolute Rules
 
 1. **Never modify `## User Preference` or any content beneath it.** Read it to understand scope, but do not alter a single word.
@@ -39,7 +58,7 @@ Do not:
 
 3. **Never delete in-scope content for any reason.** Do not delete because it is "too long", "too surface-level", "not a principle", "just a case study", or "needs distilling". If the topic is in scope, the entry stays — regardless of its format, length, or whether it has been "properly refined".
 
-4. **Session records and raw findings are not disposable.** If a session record has URLs, data, names, or observations from a browsing session, it is evidence. Do not delete it because it "lacks structure". Keep all session records intact.
+4. **Session records and raw findings are evidence, but not all evidence must stay in its original location.** If a session record duplicates a concept that already has a main section, move the durable knowledge into the canonical section and leave only the truly session-specific delta, caveat, contradiction, source, or chronology note behind.
 
 5. **Never delete or merge entries in `## What I Still Want to Learn`（待探索） section.** This section tracks learning goals and exploration direction. Entries here represent active learning intent — they must not be removed, consolidated, or moved out of this section, regardless of their format or whether they appear "unrefined". Only the user can decide to promote an item from this section to "What I Know Now".
 
@@ -89,7 +108,24 @@ After deletion, consolidate content on the same topic:
 - **Contradictions between sources** → keep both, label the contradiction clearly
 - **Near-duplicates** → combine into one entry rather than deleting
 
+When deciding whether two entries are the same topic, optimize for usefulness rather than literal text similarity. If two sections teach the same underlying concept with overlapping formula, checklist, or criteria, they should usually be merged.
+
+Preferred consolidation pattern:
+
+1. Keep or create one canonical concept section.
+2. Move durable knowledge there.
+3. Preserve all concrete evidence: formulas, examples, names, URLs, numbers, caveats.
+4. In the original later section, keep only what is genuinely new:
+   - source attribution
+   - chronology
+   - a correction
+   - a contradiction
+   - a new example not already preserved
+5. Delete the redundant repeated explanation.
+
 **Do not over-simplify during merging.** When merging case studies or multiple entries on the same topic, preserve all the detail — do not compress into a one-liner. The merged entry should contain everything from each source. The goal is to eliminate redundancy while retaining every specific data point, URL, and number.
+
+If the best result requires moving a block to a better section heading, do that. Reorganization is allowed when it makes the notes materially clearer.
 
 ### Step 4: Report
 
@@ -136,9 +172,11 @@ This skill is not complete until:
 
 - [ ] Only entries explicitly marked out-of-scope in `## User Preference` were deleted
 - [ ] Related content on the same topic was merged (not deleted)
+- [ ] Repeated concept blocks were consolidated into canonical sections where appropriate
 - [ ] All data points, URLs, names, and numbers were preserved during merging
 - [ ] No entry was deleted because it was "too long", "too surface-level", or "needed distilling"
 - [ ] No entry was rewritten or over-simplified
+- [ ] Session records that duplicated existing concepts were reduced to session-specific deltas instead of leaving two full copies
 - [ ] Contradictions between sources were preserved and labeled, not resolved
 - [ ] `## What I Still Want to Learn`（待探索） section left untouched — no entries deleted, merged, or moved
 - [ ] Change report delivered to the user

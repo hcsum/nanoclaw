@@ -17,7 +17,7 @@ Use Google Trends as a research source for:
 Run:
 
 ```bash
-printf '%s' '{"keywords":["<keyword1>","<keyword2>"],"geo":"US","date":"today 12-m"}' | NANOCLAW_ROOT=/home/node CDP_PROXY_BASE_URL=http://host.docker.internal:3456 npx tsx /home/node/.claude/skills/google-trends/scripts/compare.ts
+printf '%s' '{"keywords":["<keyword1>","<keyword2>"],"geo":"US","date":"today 12-m"}' | NANOCLAW_ROOT=/home/node CDP_PROXY_BASE_URL=http://host.docker.internal:3456 npx tsx /home/node/.claude/skills/check-google-trends/scripts/compare.ts
 ```
 
 - `keywords`: array of 1-5 search terms to compare
